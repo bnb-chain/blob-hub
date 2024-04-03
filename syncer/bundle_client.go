@@ -1,0 +1,280 @@
+package syncer
+
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	modle "github.com/node-real/greenfield-bundle-service/models"
+	"github.com/node-real/greenfield-bundle-service/types"
+
+	"io"
+	"mime/multipart"
+	"net/http"
+	"os"
+	"time"
+)
+
+const (
+	pathCreateBundle    = "/v1/createBundle"
+	pathFinalizeBundle  = "/v1/finalizeBundle"
+	pathUploadObject    = "/v1/uploadObject"
+	pathGetBundleInfo   = "/v1/queryBundle/%s/%s"
+	pathGetBundleObject = "/v1/view/%s/%s/%s" // {bucketName}/{bundleName}/{objectName}
+
+	bundleExpiredTime = 24 * time.Hour
+)
+
+var (
+	ErrorBundleNotExist       = errors.New("the bundle not exist in bundle service")
+	ErrorBundleObjectNotExist = errors.New("the bundle object not exist in bundle service")
+)
+
+type BundleClient struct {
+	hc      *http.Client
+	timeout time.Duration
+	host    string
+	privKey []byte
+	addr    common.Address
+}
+
+func NewBundleClient(host string, timeout time.Duration, privateKeyHex string) (*BundleClient, error) {
+	transport := &http.Transport{
+		DisableCompression:  true,
+		MaxIdleConnsPerHost: 1000,
+		MaxConnsPerHost:     1000,
+		IdleConnTimeout:     90 * time.Second,
+	}
+	client := &http.Client{
+		Timeout:   10 * time.Minute,
+		Transport: transport,
+	}
+	privateKeyBytes, err := hex.DecodeString(privateKeyHex)
+	if err != nil {
+		return nil, err
+	}
+	// Convert the bytes to *ecdsa.PrivateKey
+	privateKey, err := crypto.ToECDSA(privateKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+	return &BundleClient{hc: client,
+		timeout: timeout,
+		host:    host,
+		privKey: privateKeyBytes,
+		addr:    crypto.PubkeyToAddress(privateKey.PublicKey),
+	}, nil
+}
+
+func (c *BundleClient) CreateBundle(bundleName, bucketName string) error {
+	headers := map[string]string{
+		"Content-Type":              "application/json",
+		"X-Bundle-Bucket-Name":      bucketName,
+		"X-Bundle-Name":             bundleName,
+		"X-Bundle-Expiry-Timestamp": fmt.Sprintf("%d", time.Now().Add(1*time.Hour).Unix()),
+	}
+	resp, err := c.sendRequest(c.host+pathCreateBundle, "POST", headers, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	bodyStr, err := ReadResponseBody(resp)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("received non-OK response status: %s, err %s", resp.Status, bodyStr)
+	}
+	return nil
+}
+
+func (c *BundleClient) FinalizeBundle(bundleName, bucketName string) error {
+	headers := map[string]string{
+		"Content-Type":              "application/json",
+		"X-Bundle-Bucket-Name":      bucketName,
+		"X-Bundle-Name":             bundleName,
+		"X-Bundle-Expiry-Timestamp": fmt.Sprintf("%d", time.Now().Add(bundleExpiredTime).Unix()),
+	}
+	// finalize bundle
+	resp, err := c.sendRequest(c.host+pathFinalizeBundle, "POST", headers, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	bodyStr, err := ReadResponseBody(resp)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("received non-OK response status: %s, err %s", resp.Status, bodyStr)
+	}
+	return nil
+}
+
+func (c *BundleClient) DeleteBundle(bundleName, bucketName string) error {
+	headers := map[string]string{
+		"Content-Type":              "application/json",
+		"X-Bundle-Bucket-Name":      bucketName,
+		"X-Bundle-Name":             bundleName,
+		"X-Bundle-Expiry-Timestamp": fmt.Sprintf("%d", time.Now().Add(bundleExpiredTime).Unix()),
+	}
+	// finalize bundle
+	resp, err := c.sendRequest(c.host+pathFinalizeBundle, "POST", headers, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	bodyStr, err := ReadResponseBody(resp)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("received non-OK response status: %s, err %s", resp.Status, bodyStr)
+	}
+	return nil
+}
+
+func (c *BundleClient) UploadObject(fileName, bucketName, bundleName, contentType string, file *os.File) error {
+	// CreateBlock a new SHA256 hash
+	hash := sha256.New()
+
+	// Write the file's content to the hash
+	if _, err := io.Copy(hash, file); err != nil {
+		return err
+	}
+
+	// Get the hash sum in bytes
+	hashInBytes := hash.Sum(nil)[:]
+
+	// Hex encode the hash sum
+	hashInHex := hex.EncodeToString(hashInBytes)
+
+	// Reset the file read pointer to the beginning
+	_, _ = file.Seek(0, 0)
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	filePart, err := writer.CreateFormFile("file", fileName)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(filePart, file)
+	if err != nil {
+		return err
+	}
+	err = writer.Close()
+	if err != nil {
+		return err
+	}
+	headers := map[string]string{
+		"Content-Type":              writer.FormDataContentType(),
+		"X-Bundle-Bucket-Name":      bucketName,
+		"X-Bundle-Name":             bundleName,
+		"X-Bundle-File-Name":        fileName,
+		"X-Bundle-Content-Type":     contentType,
+		"X-Bundle-Expiry-Timestamp": fmt.Sprintf("%d", time.Now().Add(bundleExpiredTime).Unix()),
+		"X-Bundle-File-Sha256":      hashInHex,
+	}
+	resp, err := c.sendRequest(c.host+pathUploadObject, "POST", headers, body.Bytes())
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	bodyStr, err := ReadResponseBody(resp)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("received non-OK response status: %s, err %s", resp.Status, bodyStr)
+	}
+	return nil
+}
+
+func (c *BundleClient) GetBundleInfo(bucketName, bundleName string) (*modle.QueryBundleResponse, error) {
+	req, err := http.NewRequest("GET", c.host+fmt.Sprintf(pathGetBundleInfo, bucketName, bundleName), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, ErrorBundleNotExist
+		}
+		return nil, fmt.Errorf("received non-OK response status: %s", resp.Status)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	bundle := &modle.QueryBundleResponse{}
+	return bundle, json.Unmarshal(body, bundle)
+}
+
+func (c *BundleClient) GetObject(bucketName, bundleName, objectName string) (string, error) {
+	path := fmt.Sprintf(pathGetBundleObject, bucketName, bundleName, objectName)
+	req, err := http.NewRequest("GET", c.host+path, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return "", ErrorBundleObjectNotExist
+		}
+		return "", fmt.Errorf("received non-OK response status: %s", resp.Status)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
+}
+
+func (c *BundleClient) sendRequest(url, method string, headers map[string]string, body []byte) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+	if err != nil {
+		return nil, err
+	}
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	signature, err := c.signMessage(types.TextHash(crypto.Keccak256([]byte(types.GetCanonicalRequest(req)))))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set(types.HTTPHeaderAuthorization, hex.EncodeToString(signature))
+	return c.hc.Do(req)
+}
+
+func ReadResponseBody(resp *http.Response) (string, error) {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
+}
+
+func (c *BundleClient) signMessage(message []byte) ([]byte, error) {
+	privateKey, err := crypto.ToECDSA(c.privKey)
+	if err != nil {
+		return nil, err
+	}
+	signature, err := crypto.Sign(message, privateKey)
+	if err != nil {
+		return nil, err
+	}
+	return signature, err
+}
