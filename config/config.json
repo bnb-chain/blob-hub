@@ -1,7 +1,7 @@
 {
   "syncer_config": {
     "bucket_name": "bsc-blobs",
-    "start_height": 8775477,
+    "start_height": 8775600,
     "beacon_addrs": [
       "https://eth2-beacon-mainnet.nodereal.io/v1/a24f28a0f2484effa9fea36b8e281272"
     ],

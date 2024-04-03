@@ -8,11 +8,18 @@ ldflags = -X $(REPO)/version.AppVersion=$(VERSION) \
           -X $(REPO)/version.GitCommit=$(GIT_COMMIT) \
           -X $(REPO)/version.GitCommitDate=$(GIT_COMMIT_DATE)
 
-build:
+build_syncer:
 ifeq ($(OS),Windows_NT)
 	go build -o build/blob-syncer.exe -ldflags="$(ldflags)" main.go
 else
 	go build -o build/blob-syncer -ldflags="$(ldflags)" main.go
+endif
+
+build_server:
+ifeq ($(OS),Windows_NT)
+	go build $(BUILD_FLAGS) -o build/server.exe cmd/blob-syncer-server/main.go
+else
+	go build $(BUILD_FLAGS) -o build/server cmd/blob-syncer-server/main.go
 endif
 
 install:
@@ -49,3 +56,8 @@ format:
 	bash scripts/format.sh
 
 .PHONY: lint lint-fix format
+
+swagger-gen:
+	swagger generate server -f ./swagger.yaml -A blob-syncer --default-scheme=http
+
+

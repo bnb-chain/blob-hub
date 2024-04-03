@@ -1,0 +1,88 @@
+swagger: '2.0'
+info:
+  version: 1.0.0
+  title: Blob Syncer Service API
+  description: API for handling blob query in the Blob Syncer.
+host: 'blob-syncer'
+basePath: "/eth/v1"
+schemes:
+  - http
+
+paths:
+  /beacon/blob_sidecars/{blockNum}:
+    get:
+      tags:
+        - "blob"
+      summary: "Get blob sidecars by block num"
+      operationId: "getBlobSidecarsByBlockNum"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "blockNum"
+          in: "path"
+          description: "blockNum"
+          required: true
+          type: "integer"
+          format: "int64"
+          minLength: 1
+      responses:
+        "200":
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/GetBlobSideCarsResponse"
+        "400":
+          description: 'Bad Request'
+          schema:
+            $ref: "#/definitions/Error"
+        "500":
+          description: 'internal server error'
+          schema:
+            $ref: "#/definitions/Error"
+
+definitions:
+  GetBlobSideCarsResponse:
+    type: object
+    properties:
+      code:
+        type: integer
+        description: "code defined by api,not equal to http code"
+        example: 2000
+      message:
+        type: string
+        description: "error message if there is error"
+        example: "signature invalid"
+      data:
+        type: object
+        description: "actual data for request"
+        properties:
+          sidecar:
+            type: array
+            items:
+              $ref: "#/definitions/Sidecar"
+  Sidecar:
+    type: object
+    properties:
+      index:
+        type: integer
+        format: int
+        description: "index"
+        example: 1
+      blob:
+        type: string
+        description: "name"
+        example: "Art"
+
+  Error:
+    type: object
+    properties:
+      code:
+        x-omitempty: false
+        type: integer
+        format: int64
+        description: "HTTP error code"
+        example: "400/500"
+      message:
+        x-omitempty: false
+        type: string
+        description: "Error message"
+        example: "Bad request/Internal server error"

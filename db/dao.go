@@ -36,25 +36,17 @@ func (d *BlobSvcDB) GetLatestProcessedBlock() (*Block, error) {
 }
 
 type BlobDB interface {
-	GetBlob(uint64) (*Blob, error)
+	GetBlobs(height int64) ([]*Blob, error)
 	//UpdateBlobStatus(blobName string, status BlobStatus) error
 }
 
-func (d *BlobSvcDB) GetBlob(u uint64) (*Blob, error) {
-	blob := Blob{}
-	err := d.db.Model(Block{}).Order("height desc").Take(&blob).Error
-	if err != nil && err != gorm.ErrRecordNotFound {
-		return nil, err
+func (d *BlobSvcDB) GetBlobs(height int64) ([]*Blob, error) {
+	blobs := make([]*Blob, 0)
+	if err := d.db.Where("height = ?", uint64(height)).Find(&blobs).Error; err != nil {
+		return blobs, err
 	}
-	return &blob, nil
+	return blobs, nil
 }
-
-//func (d *BlobSvcDB) UpdateBlobStatus(blobName string, status Status) error {
-//	return d.db.Transaction(func(dbTx *gorm.DB) error {
-//		return dbTx.Model(Blob{}).Where("name = ?", blobName).Updates(
-//			Blob{Status: status}).Error
-//	})
-//}
 
 type BundleDB interface {
 	GetLatestFinalizingBundle() (*Bundle, error)

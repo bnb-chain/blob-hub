@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	CreateBundleBlockInterval = 100
+	CreateBundleBlockInterval = 10
 
 	BundleStatusBundling       = 0
 	BundleStatusFinalized      = 1
@@ -123,10 +123,12 @@ func (l *BlobSyncer) process() error {
 	if err != nil {
 		return err
 	}
+	bundleName := l.bundleDetail.name
+
 	// create a new bundle
 	if nextHeight == l.bundleDetail.startHeight {
 		if err := l.createBundle(); err != nil {
-			logging.Logger.Errorf("failed to create bundle, bundle=%s, err=%s", l.bundleDetail.name, err.Error())
+			logging.Logger.Errorf("failed to create bundle, bundle=%s, err=%s", bundleName, err.Error())
 			return err
 		}
 		err := l.uploadBlobs(nextHeight, sideCars)
@@ -138,22 +140,23 @@ func (l *BlobSyncer) process() error {
 		if err != nil {
 			return err
 		}
-		if err = l.finalizeBundle(l.bundleDetail.name); err != nil {
+		if err = l.finalizeBundle(bundleName); err != nil {
 			if strings.Contains(err.Error(), "expired") {
-				err = l.bundleClient.DeleteBundle(l.bundleDetail.name, l.getBucketName())
+				err = l.bundleClient.DeleteBundle(bundleName, l.getBucketName())
 				if err != nil {
-					logging.Logger.Infof("failed to delete bundle, bundleName=%s, err=%s", l.bundleDetail.name, err.Error())
+					logging.Logger.Infof("failed to delete bundle, bundleName=%s, err=%s", bundleName, err.Error())
 					return err
 				}
-				err = l.reProcessBundleAndFinalize(l.bundleDetail.name)
+				err = l.reProcessBundleAndFinalize(bundleName)
 				if err != nil {
-					logging.Logger.Infof("failed to re-process bundle, bundleName=%s, err=%s", l.bundleDetail.name, err.Error())
+					logging.Logger.Infof("failed to re-process bundle, bundleName=%s, err=%s", bundleName, err.Error())
 					return err
 				}
 			}
-			return fmt.Errorf("failed to finalize bundle, bundle=%s, err=%s", l.bundleDetail.name, err.Error())
+			return fmt.Errorf("failed to finalize bundle, bundle=%s, err=%s", bundleName, err.Error())
 		}
-		logging.Logger.Infof("finalized bundle, bundle_name=%s, bucket_name=%s\n", l.bundleDetail.name, l.getBucketName())
+		logging.Logger.Infof("finalized bundle, bundle_name=%s, bucket_name=%s\n", bundleName, l.getBucketName())
+
 		// init next bundle
 		startHeight := nextHeight + 1
 		endHeight := nextHeight + l.getBlockInterval()
@@ -169,7 +172,7 @@ func (l *BlobSyncer) process() error {
 		}
 	}
 
-	blockToSave, blobToSave, err := l.ToBlockAndBlobs(block, sideCars, nextHeight)
+	blockToSave, blobToSave, err := l.ToBlockAndBlobs(block, sideCars, nextHeight, bundleName)
 	if err != nil {
 		return err
 	}
@@ -343,7 +346,7 @@ func (l *BlobSyncer) LoadProgressAndResume(nextHeight uint64) error {
 	return nil
 }
 
-func (l *BlobSyncer) ToBlockAndBlobs(blockResp *structs.GetBlockV2Response, blobs []*structs.Sidecar, height uint64) (*db.Block, []*db.Blob, error) {
+func (l *BlobSyncer) ToBlockAndBlobs(blockResp *structs.GetBlockV2Response, blobs []*structs.Sidecar, height uint64, bundleName string) (*db.Block, []*db.Blob, error) {
 	var blockReturn *db.Block
 	blobsReturn := make([]*db.Blob, 0)
 
@@ -379,7 +382,7 @@ func (l *BlobSyncer) ToBlockAndBlobs(blockResp *structs.GetBlockV2Response, blob
 			Name:       types.GetBlobName(height, uint64(index)),
 			Height:     height,
 			Index:      index,
-			BundleName: l.bundleDetail.name,
+			BundleName: bundleName,
 		}
 		blobsReturn = append(blobsReturn, b)
 	}

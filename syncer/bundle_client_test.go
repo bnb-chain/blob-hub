@@ -64,7 +64,7 @@ func TestDeleteFinalizingBundle(t *testing.T) {
 	//if err != nil {
 	//	panic(err)
 	//}
-	err = bundleClient.DeleteBundle("blobs_s8765900_e8765999", "bsc-blobs")
+	err = bundleClient.DeleteBundle("blobs_s8775478_e8775577", "bsc-blobs") // delete a bundle will also seal it onchain...
 	if err != nil {
 		panic(err)
 	}
