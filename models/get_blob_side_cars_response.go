@@ -19,12 +19,12 @@ import (
 // swagger:model GetBlobSideCarsResponse
 type GetBlobSideCarsResponse struct {
 
-	// code defined by api,not equal to http code
-	// Example: 2000
+	// status code
+	// Example: 200
 	Code int64 `json:"code,omitempty"`
 
-	// data
-	Data *GetBlobSideCarsResponseData `json:"data,omitempty"`
+	// actual data for request
+	Data []*Sidecar `json:"data"`
 
 	// error message if there is error
 	// Example: signature invalid
@@ -50,15 +50,22 @@ func (m *GetBlobSideCarsResponse) validateData(formats strfmt.Registry) error {
 		return nil
 	}
 
-	if m.Data != nil {
-		if err := m.Data.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("data")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("data")
-			}
-			return err
+	for i := 0; i < len(m.Data); i++ {
+		if swag.IsZero(m.Data[i]) { // not required
+			continue
 		}
+
+		if m.Data[i] != nil {
+			if err := m.Data[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("data" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("data" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
 	}
 
 	return nil
@@ -80,15 +87,19 @@ func (m *GetBlobSideCarsResponse) ContextValidate(ctx context.Context, formats s
 
 func (m *GetBlobSideCarsResponse) contextValidateData(ctx context.Context, formats strfmt.Registry) error {
 
-	if m.Data != nil {
-		if err := m.Data.ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("data")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("data")
+	for i := 0; i < len(m.Data); i++ {
+
+		if m.Data[i] != nil {
+			if err := m.Data[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("data" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("data" + "." + strconv.Itoa(i))
+				}
+				return err
 			}
-			return err
 		}
+
 	}
 
 	return nil
@@ -105,107 +116,6 @@ func (m *GetBlobSideCarsResponse) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary interface implementation
 func (m *GetBlobSideCarsResponse) UnmarshalBinary(b []byte) error {
 	var res GetBlobSideCarsResponse
-	if err := swag.ReadJSON(b, &res); err != nil {
-		return err
-	}
-	*m = res
-	return nil
-}
-
-// GetBlobSideCarsResponseData actual data for request
-//
-// swagger:model GetBlobSideCarsResponseData
-type GetBlobSideCarsResponseData struct {
-
-	// sidecar
-	Sidecar []*Sidecar `json:"sidecar"`
-}
-
-// Validate validates this get blob side cars response data
-func (m *GetBlobSideCarsResponseData) Validate(formats strfmt.Registry) error {
-	var res []error
-
-	if err := m.validateSidecar(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-func (m *GetBlobSideCarsResponseData) validateSidecar(formats strfmt.Registry) error {
-	if swag.IsZero(m.Sidecar) { // not required
-		return nil
-	}
-
-	for i := 0; i < len(m.Sidecar); i++ {
-		if swag.IsZero(m.Sidecar[i]) { // not required
-			continue
-		}
-
-		if m.Sidecar[i] != nil {
-			if err := m.Sidecar[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("data" + "." + "sidecar" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("data" + "." + "sidecar" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	return nil
-}
-
-// ContextValidate validate this get blob side cars response data based on the context it is used
-func (m *GetBlobSideCarsResponseData) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
-	var res []error
-
-	if err := m.contextValidateSidecar(ctx, formats); err != nil {
-		res = append(res, err)
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-func (m *GetBlobSideCarsResponseData) contextValidateSidecar(ctx context.Context, formats strfmt.Registry) error {
-
-	for i := 0; i < len(m.Sidecar); i++ {
-
-		if m.Sidecar[i] != nil {
-			if err := m.Sidecar[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("data" + "." + "sidecar" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("data" + "." + "sidecar" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	return nil
-}
-
-// MarshalBinary interface implementation
-func (m *GetBlobSideCarsResponseData) MarshalBinary() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	return swag.WriteJSON(m)
-}
-
-// UnmarshalBinary interface implementation
-func (m *GetBlobSideCarsResponseData) UnmarshalBinary(b []byte) error {
-	var res GetBlobSideCarsResponseData
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

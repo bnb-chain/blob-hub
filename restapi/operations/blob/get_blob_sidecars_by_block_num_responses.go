@@ -103,6 +103,51 @@ func (o *GetBlobSidecarsByBlockNumBadRequest) WriteResponse(rw http.ResponseWrit
 	}
 }
 
+// GetBlobSidecarsByBlockNumNotFoundCode is the HTTP code returned for type GetBlobSidecarsByBlockNumNotFound
+const GetBlobSidecarsByBlockNumNotFoundCode int = 404
+
+/*
+GetBlobSidecarsByBlockNumNotFound blob not found
+
+swagger:response getBlobSidecarsByBlockNumNotFound
+*/
+type GetBlobSidecarsByBlockNumNotFound struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *models.Error `json:"body,omitempty"`
+}
+
+// NewGetBlobSidecarsByBlockNumNotFound creates GetBlobSidecarsByBlockNumNotFound with default headers values
+func NewGetBlobSidecarsByBlockNumNotFound() *GetBlobSidecarsByBlockNumNotFound {
+
+	return &GetBlobSidecarsByBlockNumNotFound{}
+}
+
+// WithPayload adds the payload to the get blob sidecars by block num not found response
+func (o *GetBlobSidecarsByBlockNumNotFound) WithPayload(payload *models.Error) *GetBlobSidecarsByBlockNumNotFound {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the get blob sidecars by block num not found response
+func (o *GetBlobSidecarsByBlockNumNotFound) SetPayload(payload *models.Error) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *GetBlobSidecarsByBlockNumNotFound) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(404)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // GetBlobSidecarsByBlockNumInternalServerErrorCode is the HTTP code returned for type GetBlobSidecarsByBlockNumInternalServerError
 const GetBlobSidecarsByBlockNumInternalServerErrorCode int = 500
 

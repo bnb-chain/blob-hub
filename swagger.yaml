@@ -34,6 +34,10 @@ paths:
           description: 'Bad Request'
           schema:
             $ref: "#/definitions/Error"
+        "404":
+          description: 'blob not found'
+          schema:
+            $ref: "#/definitions/Error"
         "500":
           description: 'internal server error'
           schema:
@@ -45,20 +49,17 @@ definitions:
     properties:
       code:
         type: integer
-        description: "code defined by api,not equal to http code"
-        example: 2000
+        description: "status code"
+        example: 200
       message:
         type: string
         description: "error message if there is error"
         example: "signature invalid"
       data:
-        type: object
         description: "actual data for request"
-        properties:
-          sidecar:
-            type: array
-            items:
-              $ref: "#/definitions/Sidecar"
+        type: array
+        items:
+          $ref: "#/definitions/Sidecar"
   Sidecar:
     type: object
     properties:
@@ -70,7 +71,7 @@ definitions:
       blob:
         type: string
         description: "name"
-        example: "Art"
+        example: "aaaa"
 
   Error:
     type: object

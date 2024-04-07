@@ -64,6 +64,12 @@ func init() {
               "$ref": "#/definitions/Error"
             }
           },
+          "404": {
+            "description": "blob not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
           "500": {
             "description": "internal server error",
             "schema": {
@@ -97,20 +103,15 @@ func init() {
       "type": "object",
       "properties": {
         "code": {
-          "description": "code defined by api,not equal to http code",
+          "description": "status code",
           "type": "integer",
-          "example": 2000
+          "example": 200
         },
         "data": {
           "description": "actual data for request",
-          "type": "object",
-          "properties": {
-            "sidecar": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Sidecar"
-              }
-            }
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Sidecar"
           }
         },
         "message": {
@@ -185,6 +186,12 @@ func init() {
               "$ref": "#/definitions/Error"
             }
           },
+          "404": {
+            "description": "blob not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
           "500": {
             "description": "internal server error",
             "schema": {
@@ -218,38 +225,21 @@ func init() {
       "type": "object",
       "properties": {
         "code": {
-          "description": "code defined by api,not equal to http code",
+          "description": "status code",
           "type": "integer",
-          "example": 2000
+          "example": 200
         },
         "data": {
           "description": "actual data for request",
-          "type": "object",
-          "properties": {
-            "sidecar": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Sidecar"
-              }
-            }
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Sidecar"
           }
         },
         "message": {
           "description": "error message if there is error",
           "type": "string",
           "example": "signature invalid"
-        }
-      }
-    },
-    "GetBlobSideCarsResponseData": {
-      "description": "actual data for request",
-      "type": "object",
-      "properties": {
-        "sidecar": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Sidecar"
-          }
         }
       }
     },

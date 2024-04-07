@@ -1,14 +1,13 @@
 package service
 
 import (
+	"github.com/bnb-chain/blob-syncer/cache"
 	"github.com/bnb-chain/blob-syncer/config"
 	"github.com/bnb-chain/blob-syncer/db"
+	"github.com/bnb-chain/blob-syncer/external"
 	"github.com/bnb-chain/blob-syncer/models"
-	"github.com/bnb-chain/blob-syncer/syncer"
-	lru "github.com/hashicorp/golang-lru"
+	"strconv"
 )
-
-const cacheBlock = 4096
 
 type Blob interface {
 	GetBlobSidecars(blockNum int64) ([]*models.Sidecar, error)
@@ -16,28 +15,22 @@ type Blob interface {
 
 type BlobService struct {
 	blobDB       db.BlobDao
-	bundleClient *syncer.BundleClient
-	lru          *lru.Cache
+	bundleClient *external.BundleClient
+	cacheService cache.Cache
 	config       *config.Config
 }
 
-func NewBlobService(blobDB db.BlobDao, bundleClient *syncer.BundleClient, config *config.Config) Blob {
-	//bundleClient, err := syncer.NewBundleClient(config.SyncerConfig.BundleServiceAddrs[0], time.Second*3, config.SyncerConfig.PrivateKey)
-	//if err != nil {
-	//	panic(err)
-	//}
-	cache, _ := lru.New(cacheBlock)
-
+func NewBlobService(blobDB db.BlobDao, bundleClient *external.BundleClient, cache cache.Cache, config *config.Config) Blob {
 	return &BlobService{
 		blobDB:       blobDB,
 		bundleClient: bundleClient,
-		lru:          cache,
+		cacheService: cache,
 		config:       config,
 	}
 }
 
 func (b BlobService) GetBlobSidecars(blockNum int64) ([]*models.Sidecar, error) {
-	blobs, found := b.lru.Get(blockNum)
+	blobs, found := b.cacheService.Get(strconv.FormatInt(blockNum, 10))
 	if found {
 		return blobs.([]*models.Sidecar), nil
 	}
@@ -57,6 +50,6 @@ func (b BlobService) GetBlobSidecars(blockNum int64) ([]*models.Sidecar, error) 
 				Index: int64(meta.Index),
 			})
 	}
-	b.lru.Add(blockNum, sideCars)
+	b.cacheService.Set(strconv.FormatInt(blockNum, 10), sideCars)
 	return sideCars, nil
 }

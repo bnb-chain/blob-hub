@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/aws/aws-sdk-go v1.48.6
+	github.com/bnb-chain/greenfield-bundle-sdk v1.1.0
 	github.com/ethereum/go-ethereum v1.13.10
 	github.com/go-openapi/errors v0.20.4
 	github.com/go-openapi/loads v0.21.2

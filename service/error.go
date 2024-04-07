@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/bnb-chain/blob-syncer/models"
 )
 
 // Verify Interface Compliance
@@ -26,32 +27,15 @@ func (e Err) Error() string {
 
 var (
 	// NoErr - success
-	NoErr = Err{Code: 2000}
-
-	//CollectionFailCreateErr - fail to create collection
-	CollectionFailCreateErr    = Err{3101, "fail to create collection"}
-	CollectionFailGetErr       = Err{3102, "fail to get collection"}
-	CollectionNotExistErr      = Err{3103, "collection not exist"}
-	CollectionAlreadyExistErr  = Err{3104, "collection already exist"}
-	CollectionInvalidTimestamp = Err{3105, "collection invalid timestamp"}
-	CollectionInvalidCategory  = Err{3106, "invalid category"}
-	CollectionMismatch         = Err{3107, "input does not match Greenfield data"}
-
-	//DataFailCreateErr - fail to create data
-	DataFailCreateErr    = Err{3201, "fail to create data"} // Not used now, too general
-	DataFailGetErr       = Err{3202, "fail to get data"}    // Not used now, too general
-	DataNotExistErr      = Err{3203, "data not exist"}
-	DataAlreadyExistErr  = Err{3204, "data already exist"}
-	DataInvalidTimestamp = Err{3205, "nft tx expired/invalid timestamp"}
-
-	MediaInvalidFile     = Err{3401, "invalid media file"}
-	MediaFailToSave      = Err{3402, "cannot save media"}
-	MediaUnsupportedType = Err{3403, "unsupported media type"}
-	MediaNotExist        = Err{3404, "media not exists"}
-
-	//NotFoundErr - not found error
-	NotFoundErr = Err{Code: 4000, Message: "cannot find"}
+	NoErr = Err{Code: 200}
 
 	//InternalErr -internal error
-	InternalErr = Err{Code: 5000, Message: "internal error"}
+	InternalErr = Err{Code: 500, Message: "internal error"}
 )
+
+func InternalErrorWithError(err error) *models.Error {
+	return &models.Error{
+		Code:    500,
+		Message: err.Error(),
+	}
+}

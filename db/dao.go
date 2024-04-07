@@ -82,12 +82,12 @@ func (d *BlobSvcDB) UpdateBundleStatus(bundleName string, status InnerBundleStat
 
 func (d *BlobSvcDB) SaveBlockAndBlob(block *Block, blobs []*Blob) error {
 	return d.db.Transaction(func(dbTx *gorm.DB) error {
-		err := dbTx.Create(block).Error
+		err := dbTx.Save(block).Error
 		if err != nil {
 			return err
 		}
 		if len(blobs) != 0 {
-			err := dbTx.Create(blobs).Error
+			err = dbTx.Save(blobs).Error
 			if err != nil {
 				return err
 			}

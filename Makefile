@@ -10,16 +10,16 @@ ldflags = -X $(REPO)/version.AppVersion=$(VERSION) \
 
 build_syncer:
 ifeq ($(OS),Windows_NT)
-	go build -o build/blob-syncer.exe -ldflags="$(ldflags)" main.go
+	go build -o build/blob-syncer.exe -ldflags="$(ldflags)" cmd/blob-syncer/main.go
 else
-	go build -o build/blob-syncer -ldflags="$(ldflags)" main.go
+	go build -o build/blob-syncer -ldflags="$(ldflags)" cmd/blob-syncer/main.go
 endif
 
 build_server:
 ifeq ($(OS),Windows_NT)
-	go build $(BUILD_FLAGS) -o build/server.exe cmd/blob-syncer-server/main.go
+	go build -o build/blob-syncer-server.exe -ldflags="$(ldflags)" cmd/blob-syncer-server/main.go
 else
-	go build $(BUILD_FLAGS) -o build/server cmd/blob-syncer-server/main.go
+	go build -o build/blob-syncer-server -ldflags="$(ldflags)" cmd/blob-syncer-server/main.go
 endif
 
 install:

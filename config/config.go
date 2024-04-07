@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/bnb-chain/blob-syncer/cache"
 	"os"
 )
 
@@ -10,28 +11,45 @@ type Config struct {
 	LogConfig    LogConfig    `json:"log_config"`
 	DBConfig     DBConfig     `json:"db_config"`
 	SyncerConfig SyncerConfig `json:"syncer_config"`
+	ServerConfig ServerConfig `json:"server_config"`
+	CacheConfig  CacheConfig  `json:"cache_config"`
 }
 
 type SyncerConfig struct {
+	BucketName             string   `json:"bucket_name"`              // BucketName is the identifier of bucket on Greenfield that store blob
+	StartSlot              uint64   `json:"start_slot"`               // StartSlot is used to init the syncer which slot of beacon chain to synced from
+	BundleServiceEndpoints []string `json:"bundle_service_endpoints"` // BundleServiceEndpoints is a list of bundle service address
+	BeaconRPCAddrs         []string `json:"beacon_rpc_addrs"`         // BeaconRPCAddrs is a list of beacon chain RPC address
+	ETHRPCAddrs            []string `json:"eth_rpc_addrs"`
+	TempFilePath           string   `json:"temp_file_path"` // TempFilePath used to create file for every blob.
+	PrivateKey             string   `json:"private_key"`
+}
+
+type ServerConfig struct {
 	BucketName         string   `json:"bucket_name"`
-	StartHeight        uint64   `json:"start_height"`
 	BundleServiceAddrs []string `json:"bundle_service_addrs"`
-	BeaconAddrs        []string `json:"beacon_addrs"`
-	ETHRPCAddrs        []string `json:"eth_rpc_addrs"`
-	TempFilePath       string   `json:"temp_file_path"` // used to create file for every blob, bundle service might support sending stream.
-	PrivateKey         string   `json:"private_key"`
+}
+
+type CacheConfig struct {
+	CacheType string `json:"cache_type"`
+	URL       string `json:"url"`
+	CacheSize uint64 `json:"cache_size"`
+}
+
+func (c *CacheConfig) GetCacheSize() uint64 {
+	if c.CacheSize != 0 {
+		return c.CacheSize
+	}
+	return cache.DefaultCacheSize
 }
 
 type DBConfig struct {
-	Dialect       string `json:"dialect"`
-	KeyType       string `json:"key_type"`
-	AWSRegion     string `json:"aws_region"`
-	AWSSecretName string `json:"aws_secret_name"`
-	Password      string `json:"password"`
-	Username      string `json:"username"`
-	Url           string `json:"url"`
-	MaxIdleConns  int    `json:"max_idle_conns"`
-	MaxOpenConns  int    `json:"max_open_conns"`
+	Dialect      string `json:"dialect"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	Url          string `json:"url"`
+	MaxIdleConns int    `json:"max_idle_conns"`
+	MaxOpenConns int    `json:"max_open_conns"`
 }
 
 func (cfg *DBConfig) Validate() {

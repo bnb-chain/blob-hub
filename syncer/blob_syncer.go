@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/bnb-chain/blob-syncer/config"
 	"github.com/bnb-chain/blob-syncer/db"
+	"github.com/bnb-chain/blob-syncer/external"
 	"github.com/bnb-chain/blob-syncer/logging"
 	"github.com/bnb-chain/blob-syncer/types"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -22,7 +23,7 @@ import (
 )
 
 const (
-	CreateBundleBlockInterval = 10
+	CreateBundleBlockInterval = 1
 
 	BundleStatusBundling       = 0
 	BundleStatusFinalized      = 1
@@ -39,8 +40,8 @@ type curBundleDetail struct {
 
 type BlobSyncer struct {
 	blobDao      db.BlobDao
-	ethClients   *ETHClient
-	bundleClient *BundleClient
+	ethClients   *external.ETHClient
+	bundleClient *external.BundleClient
 	config       *config.Config
 	bundleDetail *curBundleDetail
 }
@@ -49,11 +50,11 @@ func NewBlobSyncer(
 	blobDao db.BlobDao,
 	config *config.Config,
 ) *BlobSyncer {
-	bundleClient, err := NewBundleClient(config.SyncerConfig.BundleServiceAddrs[0], time.Second*3, config.SyncerConfig.PrivateKey)
+	bundleClient, err := external.NewBundleClient(config.SyncerConfig.BundleServiceEndpoints[0], config.SyncerConfig.PrivateKey)
 	if err != nil {
 		panic(err)
 	}
-	clients := newETHClient(config.SyncerConfig.ETHRPCAddrs[0], config.SyncerConfig.BeaconAddrs[0])
+	clients := external.NewETHClient(config.SyncerConfig.ETHRPCAddrs[0], config.SyncerConfig.BeaconRPCAddrs[0])
 	return &BlobSyncer{
 		blobDao:      blobDao,
 		ethClients:   clients,
@@ -86,60 +87,59 @@ func (l *BlobSyncer) process() error {
 			return fmt.Errorf("failed to LoadProgressAndResume, err=%s", err.Error())
 		}
 	}
-
-	block, err := l.ethClients.beaconClient.GetBlock(ctx, nextHeight)
+	var isForkedBlock bool
+	block, err := l.ethClients.BeaconClient.GetBlock(ctx, nextHeight)
 	if err != nil {
-		if err == ErrBlockNotFound {
-			// Both try to get forked block and non-exist block will return 404. When the response is ErrBlockNotFound,
-			// check whether nextHeight is >= latest height, otherwise it is a forked block, should skip it.
-			blockResp, err := l.ethClients.beaconClient.GetLatestBlock(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to get latest becon block, err=%s", err.Error())
-			}
-			clBlock, _, err := ToBlockAndExecutionPayloadDeneb(blockResp)
-			if err != nil {
-				return fmt.Errorf("failed to ToBlockAndExecutionPayloadDeneb, err=%s", err.Error())
-			}
-			if nextHeight >= uint64(clBlock.Slot) {
-				logging.Logger.Debugf("the nextHeight %d is larger than current block height %d\n", nextHeight, clBlock.Slot)
-				return nil
-			} else {
-				forkedBlock := &db.Block{
-					Height: nextHeight,
-				}
-				return l.blobDao.SaveBlockAndBlob(forkedBlock, nil)
-			}
+		if err != external.ErrBlockNotFound {
+			return err
 		}
-		return err
+		// Both try to get forked block and non-exist block will return 404. When the response is ErrBlockNotFound,
+		// check whether nextHeight is >= latest height, otherwise it is a forked block, should skip it.
+		blockResp, err := l.ethClients.BeaconClient.GetLatestBlock(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get latest becon block, err=%s", err.Error())
+		}
+		clBlock, _, err := ToBlockAndExecutionPayloadDeneb(blockResp)
+		if err != nil {
+			return fmt.Errorf("failed to ToBlockAndExecutionPayloadDeneb, err=%s", err.Error())
+		}
+		if nextHeight >= uint64(clBlock.Slot) {
+			logging.Logger.Debugf("the nextHeight %d is larger than current block height %d\n", nextHeight, clBlock.Slot)
+			return nil
+		} else {
+			isForkedBlock = true
+		}
 	}
 
-	if !block.Finalized {
+	if !isForkedBlock && !block.Finalized {
 		logging.Logger.Infof("current block(h=%d) is not finalized yet", nextHeight)
 		time.Sleep(1 * time.Minute) // around 15 minutes to finalize
 		return nil
 	}
 
-	sideCars, err := l.ethClients.beaconClient.GetBlob(ctx, nextHeight)
-	if err != nil {
-		return err
+	var sideCars []*structs.Sidecar
+	if !isForkedBlock {
+		sideCars, err = l.ethClients.BeaconClient.GetBlob(ctx, nextHeight)
+		if err != nil {
+			return err
+		}
 	}
-	bundleName := l.bundleDetail.name
 
+	bundleName := l.bundleDetail.name
 	// create a new bundle
 	if nextHeight == l.bundleDetail.startHeight {
 		if err := l.createBundle(); err != nil {
 			logging.Logger.Errorf("failed to create bundle, bundle=%s, err=%s", bundleName, err.Error())
 			return err
 		}
-		err := l.uploadBlobs(nextHeight, sideCars)
-		if err != nil {
-			return err
-		}
-	} else if nextHeight == l.bundleDetail.finalizeHeight {
-		err = l.uploadBlobs(nextHeight, sideCars)
-		if err != nil {
-			return err
-		}
+	}
+
+	err = l.uploadBlobs(nextHeight, sideCars)
+	if err != nil {
+		return err
+	}
+
+	if nextHeight == l.bundleDetail.finalizeHeight {
 		if err = l.finalizeBundle(bundleName); err != nil {
 			if strings.Contains(err.Error(), "expired") {
 				err = l.bundleClient.DeleteBundle(bundleName, l.getBucketName())
@@ -165,11 +165,12 @@ func (l *BlobSyncer) process() error {
 			startHeight:    startHeight,
 			finalizeHeight: endHeight,
 		}
-	} else {
-		err := l.uploadBlobs(nextHeight, sideCars)
-		if err != nil {
-			return err
-		}
+	}
+
+	if isForkedBlock {
+		return l.blobDao.SaveBlockAndBlob(&db.Block{
+			Height: nextHeight,
+		}, nil)
 	}
 
 	blockToSave, blobToSave, err := l.ToBlockAndBlobs(block, sideCars, nextHeight, bundleName)
@@ -198,7 +199,7 @@ func (l *BlobSyncer) calNextHeight() (uint64, error) {
 		return 0, fmt.Errorf("failed to get latest polled block from db, error: %s", err.Error())
 	}
 	latestPolledBlockHeight := latestProcessedBlock.Height
-	nextHeight := l.config.SyncerConfig.StartHeight
+	nextHeight := l.config.SyncerConfig.StartSlot
 	if nextHeight <= latestPolledBlockHeight {
 		nextHeight = latestPolledBlockHeight + 1
 	}
@@ -208,7 +209,7 @@ func (l *BlobSyncer) calNextHeight() (uint64, error) {
 func (l *BlobSyncer) createBundle() error {
 	_, err := l.bundleClient.GetBundleInfo(l.getBucketName(), l.bundleDetail.name)
 	if err != nil {
-		if err != ErrorBundleNotExist {
+		if err != external.ErrorBundleNotExist {
 			return err
 		}
 		err = l.bundleClient.CreateBundle(l.bundleDetail.name, l.getBucketName())
@@ -232,9 +233,17 @@ func (l *BlobSyncer) finalizeBundle(bundleName string) error {
 	if bundleInfo.Status == BundleStatusExpired {
 		return fmt.Errorf("unexpect bundle status expired, name=%s", bundleInfo.BundleName)
 	} else if bundleInfo.Status == BundleStatusBundling {
-		err = l.bundleClient.FinalizeBundle(l.bundleDetail.name, l.getBucketName())
-		if err != nil {
-			return fmt.Errorf("failed to finalize bundle, bundle_name=%s, bucket_name=%s err=%s", l.bundleDetail.name, l.getBucketName(), err.Error())
+		// trying to finalize an empty bundle(contains no blob) will fail, so we need to delete it so that we can continue to create a new bundle for future blocks
+		if bundleInfo.Size == 0 {
+			err = l.bundleClient.DeleteBundle(l.bundleDetail.name, l.getBucketName())
+			if err != nil {
+				return fmt.Errorf("failed to delete bundle, bundle_name=%s, bucket_name=%s err=%s", l.bundleDetail.name, l.getBucketName(), err.Error())
+			}
+		} else {
+			err = l.bundleClient.FinalizeBundle(l.bundleDetail.name, l.getBucketName())
+			if err != nil {
+				return fmt.Errorf("failed to finalize bundle, bundle_name=%s, bucket_name=%s err=%s", l.bundleDetail.name, l.getBucketName(), err.Error())
+			}
 		}
 	} else {
 		logging.Logger.Infof("bundle has already been finalized")
@@ -293,7 +302,7 @@ func (l *BlobSyncer) LoadProgressAndResume(nextHeight uint64) error {
 		bundleResp, err := l.bundleClient.GetBundleInfo(l.getBucketName(), finalizingBundle.Name)
 		if err != nil {
 			// if the bundle recorded in DB not found in bundle service(shouldn't happen), then need to reprocess all blobs within the bundle
-			if err == ErrorBundleNotExist {
+			if err == external.ErrorBundleNotExist {
 				err = l.bundleClient.CreateBundle(finalizingBundle.Name, l.getBucketName())
 				if err != nil {
 					return err
@@ -387,7 +396,7 @@ func (l *BlobSyncer) ToBlockAndBlobs(blockResp *structs.GetBlockV2Response, blob
 		blobsReturn = append(blobsReturn, b)
 	}
 	if len(blobs) != 0 {
-		elBlock, err := l.ethClients.eth1Client.BlockByNumber(context.Background(), big.NewInt(int64(executionPayload.GetBlockNumber())))
+		elBlock, err := l.ethClients.Eth1Client.BlockByNumber(context.Background(), big.NewInt(int64(executionPayload.GetBlockNumber())))
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get block at height %d, err=%s", executionPayload.GetBlockNumber(), err.Error())
 		}
@@ -413,7 +422,7 @@ func (l *BlobSyncer) reProcessBundleAndFinalize(bundleName string) error {
 		return err
 	}
 	for i := startHeight; i < endHeight; i++ {
-		sideCars, err := l.ethClients.beaconClient.GetBlob(context.Background(), i)
+		sideCars, err := l.ethClients.BeaconClient.GetBlob(context.Background(), i)
 		if err != nil {
 			return err
 		}
@@ -436,7 +445,7 @@ func (l *BlobSyncer) reProcessBundleUntilHeight(bundleName string, endHeight uin
 		return err
 	}
 	for i := startHeight; i < endHeight; i++ {
-		sideCars, err := l.ethClients.beaconClient.GetBlob(context.Background(), i)
+		sideCars, err := l.ethClients.BeaconClient.GetBlob(context.Background(), i)
 		if err != nil {
 			return err
 		}

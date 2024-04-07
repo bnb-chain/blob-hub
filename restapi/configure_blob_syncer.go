@@ -5,11 +5,12 @@ package restapi
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/bnb-chain/blob-syncer/cache"
 	"github.com/bnb-chain/blob-syncer/config"
 	syncerdb "github.com/bnb-chain/blob-syncer/db"
+	"github.com/bnb-chain/blob-syncer/external"
 	"github.com/bnb-chain/blob-syncer/restapi/handlers"
 	"github.com/bnb-chain/blob-syncer/service"
-	"github.com/bnb-chain/blob-syncer/syncer"
 	"github.com/go-openapi/swag"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -75,7 +76,11 @@ func configureTLS(tlsConfig *tls.Config) {
 // This function can be called multiple times, depending on the number of serving schemes.
 // scheme value will be set accordingly: "http", "https" or "unix".
 func configureServer(s *http.Server, scheme, addr string) {
-	var cfg *config.Config
+	var (
+		cfg      *config.Config
+		cacheSvc cache.Cache
+		err      error
+	)
 	configFilePath := cliOpts.ConfigFilePath
 	configFilePath = "config/config.json" // todo
 	if configFilePath != "" {
@@ -89,11 +94,22 @@ func configureServer(s *http.Server, scheme, addr string) {
 
 	db := InitDBWithConfig(&cfg.DBConfig)
 	blobDB := syncerdb.NewBlobSvcDB(db)
-	bundleClient, err := syncer.NewBundleClient(cfg.SyncerConfig.BundleServiceAddrs[0], time.Second*3, cfg.SyncerConfig.PrivateKey)
+	bundleClient, err := external.NewBundleClient(cfg.SyncerConfig.BundleServiceEndpoints[0], cfg.SyncerConfig.PrivateKey)
 	if err != nil {
 		panic(err)
 	}
-	service.BlobSvc = service.NewBlobService(blobDB, bundleClient, cfg)
+
+	cacheType := cfg.CacheConfig.CacheType
+	switch cacheType {
+	//case :
+
+	default:
+		cacheSvc, err = cache.NewLocalCache(cfg.CacheConfig.GetCacheSize())
+		if err != nil {
+			panic(err)
+		}
+	}
+	service.BlobSvc = service.NewBlobService(blobDB, bundleClient, cacheSvc, cfg)
 }
 
 // The middleware configuration is for the handler executors. These do not apply to the swagger.json document.
@@ -142,7 +158,5 @@ func InitDBWithConfig(cfg *config.DBConfig) *gorm.DB {
 
 	dbConfig.SetMaxIdleConns(cfg.MaxIdleConns)
 	dbConfig.SetMaxOpenConns(cfg.MaxOpenConns)
-
-	syncerdb.InitTables(db)
 	return db
 }
