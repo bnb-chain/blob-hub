@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/bnb-chain/blob-syncer/util"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -67,39 +68,39 @@ func NewBlobSyncer(
 	}
 }
 
-func (l *BlobSyncer) StartLoop() {
+func (s *BlobSyncer) StartLoop() {
 	for {
-		if err := l.process(); err != nil {
+		if err := s.Verify(); err != nil {
 			logging.Logger.Error(err)
 			continue
 		}
 	}
 }
 
-func (l *BlobSyncer) process() error {
+func (s *BlobSyncer) process() error {
 	ctx := context.Background()
-	nextSlot, err := l.calNextSlot()
+	nextSlot, err := s.calNextSlot()
 	if err != nil {
 		return err
 	}
 
 	// the app is just re-started.
-	if l.bundleDetail == nil {
+	if s.bundleDetail == nil {
 		// get latest bundle from DB or bundle service(if DB data is lost)
-		err := l.LoadProgressAndResume(nextSlot)
+		err := s.LoadProgressAndResume(nextSlot)
 		if err != nil {
 			return fmt.Errorf("failed to LoadProgressAndResume, err=%s", err.Error())
 		}
 	}
 	var isForkedBlock bool
-	block, err := l.ethClients.BeaconClient.GetBlock(ctx, nextSlot)
+	block, err := s.ethClients.BeaconClient.GetBlock(ctx, nextSlot)
 	if err != nil {
 		if err != external.ErrBlockNotFound {
 			return err
 		}
 		// Both try to get forked block and non-exist block will return 404. When the response is ErrBlockNotFound,
 		// check whether nextSlot is >= latest slot, otherwise it is a forked block, should skip it.
-		blockResp, err := l.ethClients.BeaconClient.GetLatestBlock(ctx)
+		blockResp, err := s.ethClients.BeaconClient.GetLatestBlock(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to get latest becon block, err=%s", err.Error())
 		}
@@ -123,36 +124,36 @@ func (l *BlobSyncer) process() error {
 
 	var sideCars []*structs.Sidecar
 	if !isForkedBlock {
-		sideCars, err = l.ethClients.BeaconClient.GetBlob(ctx, nextSlot)
+		sideCars, err = s.ethClients.BeaconClient.GetBlob(ctx, nextSlot)
 		if err != nil {
 			return err
 		}
 	}
 
-	bundleName := l.bundleDetail.name
+	bundleName := s.bundleDetail.name
 	// create a new bundle
-	if nextSlot == l.bundleDetail.startSlot {
-		if err = l.createLocalBundleDir(); err != nil {
+	if nextSlot == s.bundleDetail.startSlot {
+		if err = s.createLocalBundleDir(); err != nil {
 			logging.Logger.Errorf("failed to create local bundle dir, bundle=%s, err=%s", bundleName, err.Error())
 			return err
 		}
 	}
-	err = l.writeBlobToFile(nextSlot, sideCars)
+	err = s.writeBlobToFile(nextSlot, sideCars)
 	if err != nil {
 		return err
 	}
 
-	if nextSlot == l.bundleDetail.finalizeSlot {
-		err = l.finalizeBundle(bundleName)
+	if nextSlot == s.bundleDetail.finalizeSlot {
+		err = s.finalizeBundle(bundleName)
 		if err != nil {
 			return err
 		}
-		logging.Logger.Infof("finalized bundle, bundle_name=%s, bucket_name=%s\n", bundleName, l.getBucketName())
+		logging.Logger.Infof("finalized bundle, bundle_name=%s, bucket_name=%s\n", bundleName, s.getBucketName())
 
 		// init next bundle
 		startSlot := nextSlot + 1
-		endSlot := nextSlot + l.getCreateBundleSlotInterval()
-		l.bundleDetail = &curBundleDetail{
+		endSlot := nextSlot + s.getCreateBundleSlotInterval()
+		s.bundleDetail = &curBundleDetail{
 			name:         types.GetBundleName(startSlot, endSlot),
 			startSlot:    startSlot,
 			finalizeSlot: endSlot,
@@ -160,16 +161,16 @@ func (l *BlobSyncer) process() error {
 	}
 
 	if isForkedBlock {
-		return l.blobDao.SaveBlockAndBlob(&db.Block{
+		return s.blobDao.SaveBlockAndBlob(&db.Block{
 			Slot: nextSlot,
 		}, nil)
 	}
 
-	blockToSave, blobToSave, err := l.ToBlockAndBlobs(block, sideCars, nextSlot, bundleName)
+	blockToSave, blobToSave, err := s.ToBlockAndBlobs(block, sideCars, nextSlot, bundleName)
 	if err != nil {
 		return err
 	}
-	err = l.blobDao.SaveBlockAndBlob(blockToSave, blobToSave)
+	err = s.blobDao.SaveBlockAndBlob(blockToSave, blobToSave)
 	if err != nil {
 		logging.Logger.Errorf("failed to save block(h=%d) and Blob(count=%d), err=%s", blockToSave.Slot, len(blobToSave), err.Error())
 		return err
@@ -178,21 +179,21 @@ func (l *BlobSyncer) process() error {
 	return nil
 }
 
-func (l *BlobSyncer) getBucketName() string {
-	return l.config.BucketName
+func (s *BlobSyncer) getBucketName() string {
+	return s.config.BucketName
 }
 
-func (l *BlobSyncer) getCreateBundleSlotInterval() uint64 {
-	return l.config.GetCreateBundleSlotInterval()
+func (s *BlobSyncer) getCreateBundleSlotInterval() uint64 {
+	return s.config.GetCreateBundleSlotInterval()
 }
 
-func (l *BlobSyncer) calNextSlot() (uint64, error) {
-	latestProcessedBlock, err := l.blobDao.GetLatestProcessedBlock()
+func (s *BlobSyncer) calNextSlot() (uint64, error) {
+	latestProcessedBlock, err := s.blobDao.GetLatestProcessedBlock()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get latest polled block from db, error: %s", err.Error())
 	}
 	latestPolledBlockSlot := latestProcessedBlock.Slot
-	nextSlot := l.config.StartSlot
+	nextSlot := s.config.StartSlot
 	if nextSlot <= latestPolledBlockSlot {
 		nextSlot = latestPolledBlockSlot + 1
 	}
@@ -200,35 +201,35 @@ func (l *BlobSyncer) calNextSlot() (uint64, error) {
 }
 
 // createLocalBundleDir creates an empty dir to hold blob files among a range of blocks, the blobs in this dir will be assembled into a bundle and uploaded to bundle service
-func (l *BlobSyncer) createLocalBundleDir() error {
-	_, err := os.Stat(l.getBundleDir())
+func (s *BlobSyncer) createLocalBundleDir() error {
+	_, err := os.Stat(s.getBundleDir())
 	if os.IsNotExist(err) {
-		err = os.MkdirAll(filepath.Dir(l.getBundleDir()), os.ModePerm)
+		err = os.MkdirAll(filepath.Dir(s.getBundleDir()), os.ModePerm)
 		if err != nil {
 			return err
 		}
 	}
-	return l.blobDao.CreateBundle(
+	return s.blobDao.CreateBundle(
 		&db.Bundle{
-			Name:   l.bundleDetail.name,
+			Name:   s.bundleDetail.name,
 			Status: db.Finalizing,
 		})
 }
 
-func (l *BlobSyncer) finalizeBundle(bundleName string) error {
-	err := l.bundleClient.UploadAndFinalizeBundle(bundleName, l.getBucketName(), l.getBundleDir(), l.getBundleFilePath())
+func (s *BlobSyncer) finalizeBundle(bundleName string) error {
+	err := s.bundleClient.UploadAndFinalizeBundle(bundleName, s.getBucketName(), s.getBundleDir(), s.getBundleFilePath())
 	if err != nil {
 		if !strings.Contains(err.Error(), "empty bundle") {
 			return err
 		}
 	}
-	return l.blobDao.UpdateBundleStatus(bundleName, db.Finalized)
+	return s.blobDao.UpdateBundleStatus(bundleName, db.Finalized)
 }
 
-func (l *BlobSyncer) writeBlobToFile(slot uint64, blobs []*structs.Sidecar) error {
+func (s *BlobSyncer) writeBlobToFile(slot uint64, blobs []*structs.Sidecar) error {
 	for i, b := range blobs {
-		blobName := types.GetBlobName(slot, uint64(i))
-		file, err := os.Create(l.getBlobPath(blobName))
+		blobName := types.GetBlobName(slot, i)
+		file, err := os.Create(s.getBlobPath(blobName))
 		if err != nil {
 			logging.Logger.Errorf("failed to create file, err=%s", err.Error())
 			return err
@@ -242,25 +243,25 @@ func (l *BlobSyncer) writeBlobToFile(slot uint64, blobs []*structs.Sidecar) erro
 	return nil
 }
 
-func (l *BlobSyncer) getBundleDir() string {
-	return fmt.Sprintf("%s/%s/", l.config.TempDir, l.bundleDetail.name)
+func (s *BlobSyncer) getBundleDir() string {
+	return fmt.Sprintf("%s/%s/", s.config.TempDir, s.bundleDetail.name)
 }
 
-func (l *BlobSyncer) getBlobPath(blobName string) string {
-	return fmt.Sprintf("%s/%s/%s", l.config.TempDir, l.bundleDetail.name, blobName)
+func (s *BlobSyncer) getBlobPath(blobName string) string {
+	return fmt.Sprintf("%s/%s/%s", s.config.TempDir, s.bundleDetail.name, blobName)
 }
 
-func (l *BlobSyncer) getBundleFilePath() string {
-	return fmt.Sprintf("%s/%s.bundle", l.config.TempDir, l.bundleDetail.name)
+func (s *BlobSyncer) getBundleFilePath() string {
+	return fmt.Sprintf("%s/%s.bundle", s.config.TempDir, s.bundleDetail.name)
 }
 
-func (l *BlobSyncer) LoadProgressAndResume(nextSlot uint64) error {
+func (s *BlobSyncer) LoadProgressAndResume(nextSlot uint64) error {
 	var (
 		startSlot uint64
 		endSlot   uint64
 		err       error
 	)
-	finalizingBundle, err := l.blobDao.GetLatestFinalizingBundle()
+	finalizingBundle, err := s.blobDao.GetLatestFinalizingBundle()
 	if err != nil {
 		if err != gorm.ErrRecordNotFound {
 			return err
@@ -268,7 +269,7 @@ func (l *BlobSyncer) LoadProgressAndResume(nextSlot uint64) error {
 		// There is no pending(finalizing) bundle, start a new bundle. e.g. a bundle includes
 		// blobs from block slot 0-9 when the block interval is config to 10
 		startSlot = nextSlot
-		endSlot = nextSlot + l.getCreateBundleSlotInterval() - 1
+		endSlot = nextSlot + s.getCreateBundleSlotInterval() - 1
 	} else {
 		// resume
 		startSlot, endSlot, err = types.ParseBundleName(finalizingBundle.Name)
@@ -276,7 +277,7 @@ func (l *BlobSyncer) LoadProgressAndResume(nextSlot uint64) error {
 			return err
 		}
 	}
-	l.bundleDetail = &curBundleDetail{
+	s.bundleDetail = &curBundleDetail{
 		name:         types.GetBundleName(startSlot, endSlot),
 		startSlot:    startSlot,
 		finalizeSlot: endSlot,
@@ -284,7 +285,7 @@ func (l *BlobSyncer) LoadProgressAndResume(nextSlot uint64) error {
 	return nil
 }
 
-func (l *BlobSyncer) ToBlockAndBlobs(blockResp *structs.GetBlockV2Response, blobs []*structs.Sidecar, slot uint64, bundleName string) (*db.Block, []*db.Blob, error) {
+func (s *BlobSyncer) ToBlockAndBlobs(blockResp *structs.GetBlockV2Response, blobs []*structs.Sidecar, slot uint64, bundleName string) (*db.Block, []*db.Blob, error) {
 	var blockReturn *db.Block
 	blobsReturn := make([]*db.Blob, 0)
 
@@ -306,7 +307,7 @@ func (l *BlobSyncer) ToBlockAndBlobs(blockResp *structs.GetBlockV2Response, blob
 		if err != nil {
 			return nil, nil, err
 		}
-		header, err := l.ethClients.BeaconClient.GetHeader(context.Background(), slot)
+		header, err := s.ethClients.BeaconClient.GetHeader(context.Background(), slot)
 		if err != nil {
 			logging.Logger.Errorf("failed to get header, err=%s", header.Data.Root, err.Error())
 			return nil, nil, err
@@ -340,18 +341,18 @@ func (l *BlobSyncer) ToBlockAndBlobs(blockResp *structs.GetBlockV2Response, blob
 			return nil, nil, err
 		}
 		b := &db.Blob{
-			Name:                     types.GetBlobName(slot, uint64(index)),
+			Name:                     types.GetBlobName(slot, index),
 			Slot:                     slot,
 			Idx:                      index,
 			BundleName:               bundleName,
 			KzgProof:                 blob.KzgProof,
 			KzgCommitment:            blob.KzgCommitment,
-			CommitmentInclusionProof: JoinWithComma(blob.CommitmentInclusionProof),
+			CommitmentInclusionProof: util.JoinWithComma(blob.CommitmentInclusionProof),
 		}
 		blobsReturn = append(blobsReturn, b)
 	}
 
-	elBlock, err := l.ethClients.Eth1Client.BlockByNumber(context.Background(), big.NewInt(int64(executionPayload.GetBlockNumber())))
+	elBlock, err := s.ethClients.Eth1Client.BlockByNumber(context.Background(), big.NewInt(int64(executionPayload.GetBlockNumber())))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get block at slot %d, err=%s", executionPayload.GetBlockNumber(), err.Error())
 	}

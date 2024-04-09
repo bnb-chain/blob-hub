@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/bnb-chain/blob-syncer/util"
 	"strconv"
 
 	"github.com/bnb-chain/blob-syncer/cache"
@@ -9,12 +10,11 @@ import (
 	"github.com/bnb-chain/blob-syncer/db"
 	"github.com/bnb-chain/blob-syncer/external"
 	"github.com/bnb-chain/blob-syncer/models"
-	"github.com/bnb-chain/blob-syncer/syncer"
 )
 
 type Blob interface {
 	GetBlobSidecarsByRoot(root string, indices []int64) ([]*models.Sidecar, error)
-	GetBlobSidecarsBySlot(slot int64, indices []int64) ([]*models.Sidecar, error)
+	GetBlobSidecarsBySlot(slot uint64, indices []int64) ([]*models.Sidecar, error)
 }
 
 type BlobService struct {
@@ -33,9 +33,9 @@ func NewBlobService(blobDB db.BlobDao, bundleClient *external.BundleClient, cach
 	}
 }
 
-func (b BlobService) GetBlobSidecarsBySlot(slot int64, indices []int64) ([]*models.Sidecar, error) {
+func (b BlobService) GetBlobSidecarsBySlot(slot uint64, indices []int64) ([]*models.Sidecar, error) {
 	var err error
-	blobs, found := b.cacheService.Get(strconv.FormatInt(slot, 10))
+	blobs, found := b.cacheService.Get(strconv.FormatUint(slot, 10))
 	if found {
 		blobsFound := blobs.([]*models.Sidecar)
 		if len(indices) != 0 {
@@ -88,7 +88,7 @@ func (b BlobService) GetBlobSidecarsBySlot(slot int64, indices []int64) ([]*mode
 			&models.Sidecar{
 				Blob:                     bundleObject,
 				Index:                    strconv.FormatInt(int64(meta.Idx), 10),
-				CommitmentInclusionProof: syncer.SplitByComma(meta.CommitmentInclusionProof),
+				CommitmentInclusionProof: util.SplitByComma(meta.CommitmentInclusionProof),
 				KzgCommitment:            meta.KzgCommitment,
 				KzgProof:                 meta.KzgProof,
 				SignedBeaconBlockHeader:  header,
@@ -97,7 +97,7 @@ func (b BlobService) GetBlobSidecarsBySlot(slot int64, indices []int64) ([]*mode
 
 	// cache all blobs at a specified slot
 	if len(indices) == 0 {
-		b.cacheService.Set(strconv.FormatInt(slot, 10), sideCars)
+		b.cacheService.Set(strconv.FormatUint(slot, 10), sideCars)
 	}
 	return sideCars, nil
 }
@@ -107,5 +107,5 @@ func (b BlobService) GetBlobSidecarsByRoot(root string, indices []int64) ([]*mod
 	if err != nil {
 		return nil, err
 	}
-	return b.GetBlobSidecarsBySlot(int64(block.Slot), indices)
+	return b.GetBlobSidecarsBySlot(block.Slot, indices)
 }

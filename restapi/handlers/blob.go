@@ -3,8 +3,7 @@ package handlers
 import (
 	"encoding/hex"
 	"fmt"
-	"strconv"
-
+	"github.com/bnb-chain/blob-syncer/util"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/go-openapi/runtime/middleware"
 
@@ -32,7 +31,7 @@ func HandleGetBlobSidecars() func(params blob.GetBlobSidecarsByBlockNumParams) m
 
 			indicesInx := make([]int64, 0)
 			for _, idx := range indices {
-				i, err := strconv.ParseInt(idx, 10, 64)
+				i, err := util.StringToInt64(idx)
 				if err != nil {
 					return blob.NewGetBlobSidecarsByBlockNumBadRequest().WithPayload(service.BadRequestWithError(err))
 				}
@@ -49,9 +48,7 @@ func HandleGetBlobSidecars() func(params blob.GetBlobSidecarsByBlockNumParams) m
 					return blob.NewGetBlobSidecarsByBlockNumInternalServerError().WithPayload(service.InternalErrorWithError(err))
 				}
 			} else {
-				// by slot
-				var slot int64
-				slot, err = strconv.ParseInt(blockID, 10, 64)
+				slot, err := util.StringToUint64(blockID)
 				if err != nil {
 					return blob.NewGetBlobSidecarsByBlockNumBadRequest().WithPayload(service.BadRequestWithError(err))
 				}

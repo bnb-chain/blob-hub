@@ -24,12 +24,15 @@ func NewBlobSvcDB(db *gorm.DB) BlobDao {
 }
 
 type BlockDB interface {
-	GetBlock(slot int64) (*Block, error)
+	GetBlock(slot uint64) (*Block, error)
 	GetBlockByRoot(root string) (*Block, error)
 	GetLatestProcessedBlock() (*Block, error)
+	GetLatestVerifiedBlock() (*Block, error)
+	GetFirstBlock() (*Block, error)
+	UpdateBlockToVerifiedStatus(slot uint64) error
 }
 
-func (d *BlobSvcDB) GetBlock(slot int64) (*Block, error) {
+func (d *BlobSvcDB) GetBlock(slot uint64) (*Block, error) {
 	block := Block{}
 	err := d.db.Model(Block{}).Where("slot = ?", slot).Take(&block).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
@@ -56,22 +59,47 @@ func (d *BlobSvcDB) GetLatestProcessedBlock() (*Block, error) {
 	return &block, nil
 }
 
-type BlobDB interface {
-	GetBlobBySlot(slot int64) ([]*Blob, error)
-	GetBlobBySlotAndIndices(slot int64, indices []int64) ([]*Blob, error)
+func (d *BlobSvcDB) GetLatestVerifiedBlock() (*Block, error) {
+	block := Block{}
+	err := d.db.Model(Block{}).Where("status = ?", Verified).Order("slot desc").Take(&block).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	return &block, nil
 }
 
-func (d *BlobSvcDB) GetBlobBySlot(slot int64) ([]*Blob, error) {
+func (d *BlobSvcDB) GetFirstBlock() (*Block, error) {
+	block := Block{}
+	err := d.db.Model(Block{}).Order("slot asc").Take(&block).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	return &block, nil
+}
+
+func (d *BlobSvcDB) UpdateBlockToVerifiedStatus(slot uint64) error {
+	return d.db.Transaction(func(dbTx *gorm.DB) error {
+		return dbTx.Model(Block{}).Where("slot = ?", slot).Updates(
+			Block{Status: Verified}).Error
+	})
+}
+
+type BlobDB interface {
+	GetBlobBySlot(slot uint64) ([]*Blob, error)
+	GetBlobBySlotAndIndices(slot uint64, indices []int64) ([]*Blob, error)
+}
+
+func (d *BlobSvcDB) GetBlobBySlot(slot uint64) ([]*Blob, error) {
 	blobs := make([]*Blob, 0)
-	if err := d.db.Where("slot = ?", uint64(slot)).Find(&blobs).Error; err != nil {
+	if err := d.db.Where("slot = ?", slot).Order("idx asc").Find(&blobs).Error; err != nil {
 		return blobs, err
 	}
 	return blobs, nil
 }
 
-func (d *BlobSvcDB) GetBlobBySlotAndIndices(slot int64, indices []int64) ([]*Blob, error) {
+func (d *BlobSvcDB) GetBlobBySlotAndIndices(slot uint64, indices []int64) ([]*Blob, error) {
 	blobs := make([]*Blob, 0)
-	if err := d.db.Where("slot = ? and idx in (?)", uint64(slot), indices).Find(&blobs).Error; err != nil {
+	if err := d.db.Where("slot = ? and idx in (?)", slot, indices).Order("idx asc").Find(&blobs).Error; err != nil {
 		return blobs, err
 	}
 	return blobs, nil
