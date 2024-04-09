@@ -16,6 +16,7 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/swag"
 	"net/http"
+	"os"
 )
 
 //go:generate swagger generate server --target ../../blob-syncer --name BlobSyncer --spec ../swagger.yaml --principal interface{}
@@ -74,14 +75,14 @@ func configureServer(s *http.Server, scheme, addr string) {
 		err      error
 	)
 	configFilePath := cliOpts.ConfigFilePath
-	configFilePath = "config/local/config-server.json" // todo
-	if configFilePath != "" {
-		cfg = config.ParseServerConfigFromFile(configFilePath)
+	if configFilePath == "" {
+		configFilePath = os.Getenv(config.EnvVarConfigFilePath)
 	}
+	cfg = config.ParseServerConfigFromFile(configFilePath)
 	if cfg == nil {
 		panic("failed to get configuration")
 	}
-
+	cfg.Validate()
 	db := config.InitDBWithConfig(&cfg.DBConfig, false)
 	blobDB := syncerdb.NewBlobSvcDB(db)
 	bundleClient, err := external.NewBundleClient(cfg.BundleServiceEndpoints[0])

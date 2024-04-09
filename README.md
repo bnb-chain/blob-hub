@@ -39,13 +39,13 @@ make build_server
 ### Run blob syncer instance
 
 ```shell
-./build/blob-syncer --config-type local --config-path config/config.json
+./build/blob-syncer --config-path config/local/config-syncer.json
 ```
 
 ### Run the api server
 
 ```shell
-./build/blob-syncer-server --config-path config/config.json --port 8080 
+./build/blob-syncer-server --config-path config/local/config-server.json --port 8080 
 ```
 
 ## Blob syncer API

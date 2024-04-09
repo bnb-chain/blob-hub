@@ -9,6 +9,7 @@ import (
 	"github.com/bnb-chain/blob-syncer/syncer"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"os"
 )
 
 func initFlags() {
@@ -32,8 +33,9 @@ func main() {
 	)
 	initFlags()
 	configFilePath = viper.GetString(config.FlagConfigPath)
-
-	configFilePath = "config/local/config-syncer.json" //todo
+	if configFilePath == "" {
+		configFilePath = os.Getenv(config.EnvVarConfigFilePath)
+	}
 	if configFilePath == "" {
 		printUsage()
 		return

@@ -3,7 +3,8 @@ package config
 const (
 	FlagConfigPath = "config-path"
 
-	DBDialectMysql       = "mysql"
+	DBDialectMysql = "mysql"
+
 	EnvVarConfigFilePath = "CONFIG_FILE_PATH"
 	EnvVarDBUserName     = "DB_USERNAME"
 	EnvVarDBUserPass     = "DB_PASSWORD"
