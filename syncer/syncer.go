@@ -230,9 +230,17 @@ func (s *BlobSyncer) createLocalBundleDir() error {
 func (s *BlobSyncer) finalizeBundle(bundleName string) error {
 	err := s.bundleClient.UploadAndFinalizeBundle(bundleName, s.getBucketName(), s.getBundleDir(), s.getBundleFilePath())
 	if err != nil {
-		if !strings.Contains(err.Error(), "empty bundle") {
+		if !strings.Contains(err.Error(), "Object exists") && !strings.Contains(err.Error(), "empty bundle") {
 			return err
 		}
+	}
+	err = os.RemoveAll(s.getBundleDir())
+	if err != nil {
+		return err
+	}
+	err = os.Remove(s.getBundleFilePath())
+	if err != nil && !os.IsNotExist(err) {
+		return err
 	}
 	return s.blobDao.UpdateBundleStatus(bundleName, db.Finalized)
 }
