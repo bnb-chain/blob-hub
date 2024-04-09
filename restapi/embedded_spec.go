@@ -30,7 +30,7 @@ func init() {
   "host": "blob-syncer",
   "basePath": "/eth/v1",
   "paths": {
-    "/beacon/blob_sidecars/{blockNum}": {
+    "/beacon/blob_sidecars/{block_id}": {
       "get": {
         "produces": [
           "application/json"
@@ -43,12 +43,20 @@ func init() {
         "parameters": [
           {
             "minLength": 1,
-            "type": "integer",
-            "format": "int64",
-            "description": "blockNum",
-            "name": "blockNum",
+            "type": "string",
+            "description": "Block identifier. Can be one of: 'head' (canonical head in node's view), 'genesis', 'finalized', \u003cslot\u003e, \u003chex encoded blockRoot with 0x prefix\u003e",
+            "name": "block_id",
             "in": "path",
             "required": true
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of indices for blob sidecars to request for in the specified block. Returns all blob sidecars in the block if not specified",
+            "name": "indices",
+            "in": "query"
           }
         ],
         "responses": {
@@ -125,15 +133,57 @@ func init() {
       "type": "object",
       "properties": {
         "blob": {
-          "description": "name",
-          "type": "string",
-          "example": "Art"
+          "description": "blob",
+          "type": "string"
+        },
+        "commitmentInclusionProof": {
+          "description": "kzg_commitment_inclusion_proof",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "index": {
           "description": "index",
-          "type": "integer",
-          "format": "int",
+          "type": "string",
           "example": 1
+        },
+        "kzgCommitment": {
+          "description": "kzg_commitment",
+          "type": "string"
+        },
+        "kzgProof": {
+          "description": "kzg_proof",
+          "type": "string"
+        },
+        "signedBeaconBlockHeader": {
+          "description": "signed_beacon_block_header",
+          "type": "object",
+          "properties": {
+            "message": {
+              "type": "object",
+              "properties": {
+                "bodyRoot": {
+                  "type": "string"
+                },
+                "parentRoot": {
+                  "type": "string"
+                },
+                "proposerIndex": {
+                  "type": "string"
+                },
+                "slot": {
+                  "type": "string"
+                },
+                "stateRoot": {
+                  "type": "string"
+                }
+              }
+            },
+            "signature": {
+              "type": "string"
+            }
+          }
         }
       }
     }
@@ -152,7 +202,7 @@ func init() {
   "host": "blob-syncer",
   "basePath": "/eth/v1",
   "paths": {
-    "/beacon/blob_sidecars/{blockNum}": {
+    "/beacon/blob_sidecars/{block_id}": {
       "get": {
         "produces": [
           "application/json"
@@ -165,12 +215,20 @@ func init() {
         "parameters": [
           {
             "minLength": 1,
-            "type": "integer",
-            "format": "int64",
-            "description": "blockNum",
-            "name": "blockNum",
+            "type": "string",
+            "description": "Block identifier. Can be one of: 'head' (canonical head in node's view), 'genesis', 'finalized', \u003cslot\u003e, \u003chex encoded blockRoot with 0x prefix\u003e",
+            "name": "block_id",
             "in": "path",
             "required": true
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of indices for blob sidecars to request for in the specified block. Returns all blob sidecars in the block if not specified",
+            "name": "indices",
+            "in": "query"
           }
         ],
         "responses": {
@@ -247,15 +305,106 @@ func init() {
       "type": "object",
       "properties": {
         "blob": {
-          "description": "name",
-          "type": "string",
-          "example": "Art"
+          "description": "blob",
+          "type": "string"
+        },
+        "commitmentInclusionProof": {
+          "description": "kzg_commitment_inclusion_proof",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "index": {
           "description": "index",
-          "type": "integer",
-          "format": "int",
+          "type": "string",
           "example": 1
+        },
+        "kzgCommitment": {
+          "description": "kzg_commitment",
+          "type": "string"
+        },
+        "kzgProof": {
+          "description": "kzg_proof",
+          "type": "string"
+        },
+        "signedBeaconBlockHeader": {
+          "description": "signed_beacon_block_header",
+          "type": "object",
+          "properties": {
+            "message": {
+              "type": "object",
+              "properties": {
+                "bodyRoot": {
+                  "type": "string"
+                },
+                "parentRoot": {
+                  "type": "string"
+                },
+                "proposerIndex": {
+                  "type": "string"
+                },
+                "slot": {
+                  "type": "string"
+                },
+                "stateRoot": {
+                  "type": "string"
+                }
+              }
+            },
+            "signature": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "SidecarSignedBeaconBlockHeader": {
+      "description": "signed_beacon_block_header",
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "object",
+          "properties": {
+            "bodyRoot": {
+              "type": "string"
+            },
+            "parentRoot": {
+              "type": "string"
+            },
+            "proposerIndex": {
+              "type": "string"
+            },
+            "slot": {
+              "type": "string"
+            },
+            "stateRoot": {
+              "type": "string"
+            }
+          }
+        },
+        "signature": {
+          "type": "string"
+        }
+      }
+    },
+    "SidecarSignedBeaconBlockHeaderMessage": {
+      "type": "object",
+      "properties": {
+        "bodyRoot": {
+          "type": "string"
+        },
+        "parentRoot": {
+          "type": "string"
+        },
+        "proposerIndex": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "stateRoot": {
+          "type": "string"
         }
       }
     }

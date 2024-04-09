@@ -9,7 +9,7 @@ schemes:
   - http
 
 paths:
-  /beacon/blob_sidecars/{blockNum}:
+  /beacon/blob_sidecars/{block_id}:
     get:
       tags:
         - "blob"
@@ -18,13 +18,18 @@ paths:
       produces:
         - "application/json"
       parameters:
-        - name: "blockNum"
+        - name: "block_id"
           in: "path"
-          description: "blockNum"
+          description: "Block identifier. Can be one of: 'head' (canonical head in node's view), 'genesis', 'finalized', <slot>, <hex encoded blockRoot with 0x prefix>"
           required: true
-          type: "integer"
-          format: "int64"
+          type: string
           minLength: 1
+        - name: "indices"
+          in: "query"
+          description: "Array of indices for blob sidecars to request for in the specified block. Returns all blob sidecars in the block if not specified"
+          type: array
+          items:
+            type: string
       responses:
         "200":
           description: "successful operation"
@@ -64,14 +69,42 @@ definitions:
     type: object
     properties:
       index:
-        type: integer
-        format: int
+        type: string
         description: "index"
         example: 1
       blob:
         type: string
-        description: "name"
-        example: "aaaa"
+        description: "blob"
+      kzgCommitment:
+        type: string
+        description: "kzg_commitment"
+      kzgProof:
+        type: string
+        description: "kzg_proof"
+      commitmentInclusionProof:
+        type: array
+        description: "kzg_commitment_inclusion_proof"
+        items:
+          type: string
+      signedBeaconBlockHeader:
+        type: object
+        description: "signed_beacon_block_header"
+        properties:
+          signature:
+            type: string
+          message:
+            type: object
+            properties:
+              slot:
+                type: string
+              proposerIndex:
+                type: string
+              parentRoot:
+                type: string
+              stateRoot:
+                type: string
+              bodyRoot:
+                type: string
 
   Error:
     type: object

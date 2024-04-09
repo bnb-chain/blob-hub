@@ -1,8 +1,9 @@
 package external
 
 import (
-	"github.com/ethereum/go-ethereum/ethclient"
 	"time"
+
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 type ETHClient struct {
@@ -12,12 +13,12 @@ type ETHClient struct {
 	updatedAt    time.Time
 }
 
-func NewETHClient(rpcAddrs, beaconAddrs string) *ETHClient {
+func NewETHClient(rpcAddrs, beaconRPCAddrs string) *ETHClient {
 	ethClient, err := ethclient.Dial(rpcAddrs)
 	if err != nil {
 		panic("new eth client error")
 	}
-	beaconClient, err := NewBeaconClient(beaconAddrs, time.Second*3)
+	beaconClient, err := NewBeaconClient(beaconRPCAddrs, time.Second*3)
 	if err != nil {
 		panic("new eth client error")
 	}

@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
 	"io"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
 )
 
 var (
@@ -19,6 +20,7 @@ var (
 const (
 	pathGetSidecars = "/eth/v1/beacon/blob_sidecars/%s"
 	pathGetBlock    = "/eth/v2/beacon/blocks/%s"
+	pathGetHeader   = "/eth/v1/beacon/headers/%s"
 )
 
 type BeaconClient struct {
@@ -59,8 +61,12 @@ func (c *BeaconClient) GetBlob(ctx context.Context, slotNumber uint64) ([]*struc
 	if err != nil {
 		return nil, fmt.Errorf("error reading http response body %s", err)
 	}
-	var sidecars *structs.SidecarsResponse
-	return sidecars.Data, json.Unmarshal(respBz, &sidecars)
+	var sidecars structs.SidecarsResponse
+	err = json.Unmarshal(respBz, &sidecars)
+	if err != nil {
+		return nil, err
+	}
+	return sidecars.Data, nil
 }
 
 func (c *BeaconClient) GetBlock(ctx context.Context, slotNumber uint64) (*structs.GetBlockV2Response, error) {
@@ -108,6 +114,34 @@ func (c *BeaconClient) GetLatestBlock(ctx context.Context) (*structs.GetBlockV2R
 		return nil, fmt.Errorf("error reading http response body %s", err)
 	}
 	resp := &structs.GetBlockV2Response{}
+	return resp, json.Unmarshal(b, resp)
+
+}
+
+func (c *BeaconClient) GetHeader(ctx context.Context, slotNumber uint64) (*structs.GetBlockHeaderResponse, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.host+fmt.Sprintf(pathGetHeader, strconv.FormatUint(slotNumber, 10)), nil)
+	if err != nil {
+		return nil, err
+	}
+	r, err := c.hc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		err = r.Body.Close()
+	}()
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading http response body %s", err)
+	}
+
+	if r.StatusCode != http.StatusOK {
+		if r.StatusCode == http.StatusNotFound {
+			return nil, ErrBlockNotFound
+		}
+		return nil, fmt.Errorf("received non-OK response status: %s", r.Status)
+	}
+	resp := &structs.GetBlockHeaderResponse{}
 	return resp, json.Unmarshal(b, resp)
 
 }

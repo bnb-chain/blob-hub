@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+
 	"github.com/bnb-chain/blob-syncer/models"
 )
 
@@ -25,17 +26,16 @@ func (e Err) Error() string {
 	return fmt.Sprintf("%d: %s", e.Code, e.Message)
 }
 
-var (
-	// NoErr - success
-	NoErr = Err{Code: 200}
-
-	//InternalErr -internal error
-	InternalErr = Err{Code: 500, Message: "internal error"}
-)
-
 func InternalErrorWithError(err error) *models.Error {
 	return &models.Error{
 		Code:    500,
+		Message: err.Error(),
+	}
+}
+
+func BadRequestWithError(err error) *models.Error {
+	return &models.Error{
+		Code:    400,
 		Message: err.Error(),
 	}
 }

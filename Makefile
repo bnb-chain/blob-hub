@@ -10,24 +10,25 @@ ldflags = -X $(REPO)/version.AppVersion=$(VERSION) \
 
 build_syncer:
 ifeq ($(OS),Windows_NT)
-	go build -o build/blob-syncer.exe -ldflags="$(ldflags)" cmd/blob-syncer/main.go
+	go build -o build/syncer.exe -ldflags="$(ldflags)" cmd/blob-syncer/main.go
 else
-	go build -o build/blob-syncer -ldflags="$(ldflags)" cmd/blob-syncer/main.go
+	go build -o build/syncer -ldflags="$(ldflags)" cmd/blob-syncer/main.go
 endif
 
 build_server:
 ifeq ($(OS),Windows_NT)
-	go build -o build/blob-syncer-server.exe -ldflags="$(ldflags)" cmd/blob-syncer-server/main.go
+	go build -o build/server.exe -ldflags="$(ldflags)" cmd/blob-syncer-server/main.go
 else
-	go build -o build/blob-syncer-server -ldflags="$(ldflags)" cmd/blob-syncer-server/main.go
+	go build -o build/server -ldflags="$(ldflags)" cmd/blob-syncer-server/main.go
 endif
 
+build:
+	make build_syncer
+	make build_server
+
 install:
-ifeq ($(OS),Windows_NT)
-	go install main.go
-else
-	go install main.go
-endif
+	go install cmd/blob-syncer/main.go
+	go install cmd/blob-syncer-server/main.go
 
 build_docker:
 	docker build . -t ${IMAGE_NAME}

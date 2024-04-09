@@ -4,26 +4,18 @@ package restapi
 
 import (
 	"crypto/tls"
-	"fmt"
 	"github.com/bnb-chain/blob-syncer/cache"
 	"github.com/bnb-chain/blob-syncer/config"
 	syncerdb "github.com/bnb-chain/blob-syncer/db"
 	"github.com/bnb-chain/blob-syncer/external"
 	"github.com/bnb-chain/blob-syncer/restapi/handlers"
-	"github.com/bnb-chain/blob-syncer/service"
-	"github.com/go-openapi/swag"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
-	"log"
-	"net/http"
-	"os"
-	"time"
-
 	"github.com/bnb-chain/blob-syncer/restapi/operations"
 	"github.com/bnb-chain/blob-syncer/restapi/operations/blob"
+	"github.com/bnb-chain/blob-syncer/service"
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
+	"github.com/go-openapi/swag"
+	"net/http"
 )
 
 //go:generate swagger generate server --target ../../blob-syncer --name BlobSyncer --spec ../swagger.yaml --principal interface{}
@@ -77,37 +69,34 @@ func configureTLS(tlsConfig *tls.Config) {
 // scheme value will be set accordingly: "http", "https" or "unix".
 func configureServer(s *http.Server, scheme, addr string) {
 	var (
-		cfg      *config.Config
+		cfg      *config.ServerConfig
 		cacheSvc cache.Cache
 		err      error
 	)
 	configFilePath := cliOpts.ConfigFilePath
-	configFilePath = "config/config.json" // todo
+	configFilePath = "config/local/config-server.json" // todo
 	if configFilePath != "" {
-		cfg = config.ParseConfigFromFile(configFilePath)
+		cfg = config.ParseServerConfigFromFile(configFilePath)
 	}
-
 	if cfg == nil {
 		panic("failed to get configuration")
 	}
-	//cfg.Validate()
 
-	db := InitDBWithConfig(&cfg.DBConfig)
+	db := config.InitDBWithConfig(&cfg.DBConfig, false)
 	blobDB := syncerdb.NewBlobSvcDB(db)
-	bundleClient, err := external.NewBundleClient(cfg.SyncerConfig.BundleServiceEndpoints[0], cfg.SyncerConfig.PrivateKey)
+	bundleClient, err := external.NewBundleClient(cfg.BundleServiceEndpoints[0])
 	if err != nil {
 		panic(err)
 	}
 
-	cacheType := cfg.CacheConfig.CacheType
-	switch cacheType {
-	//case :
-
-	default:
+	switch cfg.CacheConfig.CacheType {
+	case "local":
 		cacheSvc, err = cache.NewLocalCache(cfg.CacheConfig.GetCacheSize())
 		if err != nil {
 			panic(err)
 		}
+	default:
+		panic("currently only local cache is support.")
 	}
 	service.BlobSvc = service.NewBlobService(blobDB, bundleClient, cacheSvc, cfg)
 }
@@ -122,41 +111,4 @@ func setupMiddlewares(handler http.Handler) http.Handler {
 // So this is a good place to plug in a panic handling middleware, logging and metrics.
 func setupGlobalMiddleware(handler http.Handler) http.Handler {
 	return handler
-}
-
-func InitDBWithConfig(cfg *config.DBConfig) *gorm.DB {
-	var db *gorm.DB
-	var err error
-	var dialector gorm.Dialector
-
-	if cfg.Dialect == config.DBDialectMysql {
-		url := cfg.Url
-		dbPath := fmt.Sprintf("%s:%s@%s", cfg.Username, cfg.Password, url)
-		dialector = mysql.Open(dbPath)
-	} else {
-		panic(fmt.Sprintf("unexpected DB dialect %s", cfg.Dialect))
-	}
-	newLogger := logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
-		logger.Config{
-			SlowThreshold:             time.Microsecond, // Slow SQL threshold
-			LogLevel:                  logger.Info,      // Log level
-			IgnoreRecordNotFoundError: true,             // Ignore ErrRecordNotFound error for logger
-			Colorful:                  true,             // Disable color
-		},
-	)
-	db, err = gorm.Open(dialector, &gorm.Config{
-		Logger: newLogger,
-	})
-	if err != nil {
-		panic(fmt.Sprintf("open db error, err=%s", err.Error()))
-	}
-	dbConfig, err := db.DB()
-	if err != nil {
-		panic(err)
-	}
-
-	dbConfig.SetMaxIdleConns(cfg.MaxIdleConns)
-	dbConfig.SetMaxOpenConns(cfg.MaxOpenConns)
-	return db
 }

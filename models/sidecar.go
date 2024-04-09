@@ -8,6 +8,7 @@ package models
 import (
 	"context"
 
+	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 )
@@ -17,22 +18,86 @@ import (
 // swagger:model Sidecar
 type Sidecar struct {
 
-	// name
-	// Example: Art
+	// blob
 	Blob string `json:"blob,omitempty"`
+
+	// kzg_commitment_inclusion_proof
+	CommitmentInclusionProof []string `json:"commitmentInclusionProof"`
 
 	// index
 	// Example: 1
-	Index int64 `json:"index,omitempty"`
+	Index string `json:"index,omitempty"`
+
+	// kzg_commitment
+	KzgCommitment string `json:"kzgCommitment,omitempty"`
+
+	// kzg_proof
+	KzgProof string `json:"kzgProof,omitempty"`
+
+	// signed beacon block header
+	SignedBeaconBlockHeader *SidecarSignedBeaconBlockHeader `json:"signedBeaconBlockHeader,omitempty"`
 }
 
 // Validate validates this sidecar
 func (m *Sidecar) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.validateSignedBeaconBlockHeader(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
 	return nil
 }
 
-// ContextValidate validates this sidecar based on context it is used
+func (m *Sidecar) validateSignedBeaconBlockHeader(formats strfmt.Registry) error {
+	if swag.IsZero(m.SignedBeaconBlockHeader) { // not required
+		return nil
+	}
+
+	if m.SignedBeaconBlockHeader != nil {
+		if err := m.SignedBeaconBlockHeader.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("signedBeaconBlockHeader")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("signedBeaconBlockHeader")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this sidecar based on the context it is used
 func (m *Sidecar) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateSignedBeaconBlockHeader(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *Sidecar) contextValidateSignedBeaconBlockHeader(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.SignedBeaconBlockHeader != nil {
+		if err := m.SignedBeaconBlockHeader.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("signedBeaconBlockHeader")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("signedBeaconBlockHeader")
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -47,6 +112,148 @@ func (m *Sidecar) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary interface implementation
 func (m *Sidecar) UnmarshalBinary(b []byte) error {
 	var res Sidecar
+	if err := swag.ReadJSON(b, &res); err != nil {
+		return err
+	}
+	*m = res
+	return nil
+}
+
+// SidecarSignedBeaconBlockHeader signed_beacon_block_header
+//
+// swagger:model SidecarSignedBeaconBlockHeader
+type SidecarSignedBeaconBlockHeader struct {
+
+	// message
+	Message *SidecarSignedBeaconBlockHeaderMessage `json:"message,omitempty"`
+
+	// signature
+	Signature string `json:"signature,omitempty"`
+}
+
+// Validate validates this sidecar signed beacon block header
+func (m *SidecarSignedBeaconBlockHeader) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.validateMessage(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *SidecarSignedBeaconBlockHeader) validateMessage(formats strfmt.Registry) error {
+	if swag.IsZero(m.Message) { // not required
+		return nil
+	}
+
+	if m.Message != nil {
+		if err := m.Message.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("signedBeaconBlockHeader" + "." + "message")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("signedBeaconBlockHeader" + "." + "message")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ContextValidate validate this sidecar signed beacon block header based on the context it is used
+func (m *SidecarSignedBeaconBlockHeader) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateMessage(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *SidecarSignedBeaconBlockHeader) contextValidateMessage(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Message != nil {
+		if err := m.Message.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("signedBeaconBlockHeader" + "." + "message")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("signedBeaconBlockHeader" + "." + "message")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+// MarshalBinary interface implementation
+func (m *SidecarSignedBeaconBlockHeader) MarshalBinary() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	return swag.WriteJSON(m)
+}
+
+// UnmarshalBinary interface implementation
+func (m *SidecarSignedBeaconBlockHeader) UnmarshalBinary(b []byte) error {
+	var res SidecarSignedBeaconBlockHeader
+	if err := swag.ReadJSON(b, &res); err != nil {
+		return err
+	}
+	*m = res
+	return nil
+}
+
+// SidecarSignedBeaconBlockHeaderMessage sidecar signed beacon block header message
+//
+// swagger:model SidecarSignedBeaconBlockHeaderMessage
+type SidecarSignedBeaconBlockHeaderMessage struct {
+
+	// body root
+	BodyRoot string `json:"bodyRoot,omitempty"`
+
+	// parent root
+	ParentRoot string `json:"parentRoot,omitempty"`
+
+	// proposer index
+	ProposerIndex string `json:"proposerIndex,omitempty"`
+
+	// slot
+	Slot string `json:"slot,omitempty"`
+
+	// state root
+	StateRoot string `json:"stateRoot,omitempty"`
+}
+
+// Validate validates this sidecar signed beacon block header message
+func (m *SidecarSignedBeaconBlockHeaderMessage) Validate(formats strfmt.Registry) error {
+	return nil
+}
+
+// ContextValidate validates this sidecar signed beacon block header message based on context it is used
+func (m *SidecarSignedBeaconBlockHeaderMessage) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	return nil
+}
+
+// MarshalBinary interface implementation
+func (m *SidecarSignedBeaconBlockHeaderMessage) MarshalBinary() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	return swag.WriteJSON(m)
+}
+
+// UnmarshalBinary interface implementation
+func (m *SidecarSignedBeaconBlockHeaderMessage) UnmarshalBinary(b []byte) error {
+	var res SidecarSignedBeaconBlockHeaderMessage
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

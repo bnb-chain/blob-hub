@@ -1,6 +1,8 @@
 package cache
 
-import lru "github.com/hashicorp/golang-lru"
+import (
+	lru "github.com/hashicorp/golang-lru"
+)
 
 type Cache interface {
 	Get(key string) (interface{}, bool)

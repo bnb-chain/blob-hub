@@ -1,6 +1,7 @@
 package external
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 	"testing"
@@ -10,8 +11,7 @@ const NodeRealBundle = "https://gnfd-testnet-bundle.nodereal.io"
 const PrivateKeyHex = "d65f7cf21fe3eff9feef1dd86cea6bae8a30f6c26830e734d628c78e80debfd5"
 
 func TestGetBundleInfo(t *testing.T) {
-
-	bundleClient, err := NewBundleClient(NodeRealBundle, PrivateKeyHex)
+	bundleClient, err := NewBundleClient(NodeRealBundle)
 	if err != nil {
 		panic(err)
 	}
@@ -24,7 +24,7 @@ func TestGetBundleInfo(t *testing.T) {
 
 func TestGetBundleObject(t *testing.T) {
 
-	bundleClient, err := NewBundleClient(NodeRealBundle, PrivateKeyHex)
+	bundleClient, err := NewBundleClient(NodeRealBundle)
 	if err != nil {
 		panic(err)
 	}
@@ -36,8 +36,12 @@ func TestGetBundleObject(t *testing.T) {
 }
 
 func TestUploadObject(t *testing.T) {
+	pkBz, err := hex.DecodeString(PrivateKeyHex)
+	if err != nil {
+		panic(err)
+	}
 
-	bundleClient, err := NewBundleClient(NodeRealBundle, PrivateKeyHex)
+	bundleClient, err := NewBundleClient(NodeRealBundle, WithPrivateKey(pkBz))
 	if err != nil {
 		panic(err)
 	}
@@ -54,24 +58,31 @@ func TestUploadObject(t *testing.T) {
 }
 
 func TestDeleteFinalizingBundle(t *testing.T) {
-
-	bundleClient, err := NewBundleClient(NodeRealBundle, PrivateKeyHex)
+	pkBz, err := hex.DecodeString(PrivateKeyHex)
 	if err != nil {
 		panic(err)
 	}
-	err = bundleClient.DeleteBundle("blobs_s8775478_e8775577", "bsc-blobs")
+	bundleClient, err := NewBundleClient(NodeRealBundle, WithPrivateKey(pkBz))
+	if err != nil {
+		panic(err)
+	}
+	err = bundleClient.DeleteBundle("blobs_s8777090_e8777094", "bsc-blobs")
 	if err != nil {
 		panic(err)
 	}
 }
 
 func TestCreateLocalBundle(t *testing.T) {
-	bundleClient, err := NewBundleClient(NodeRealBundle, PrivateKeyHex)
+	pkBz, err := hex.DecodeString(PrivateKeyHex)
+	if err != nil {
+		panic(err)
+	}
+	bundleClient, err := NewBundleClient(NodeRealBundle, WithPrivateKey(pkBz))
 	if err != nil {
 		panic(err)
 	}
 
-	err = bundleClient.UploadBundle("blobssss", "bsc-blobs", "../test/", "")
+	err = bundleClient.UploadAndFinalizeBundle("blobssss", "bsc-blobs", "../test/", "")
 	if err != nil {
 		t.Fatal(err)
 	}

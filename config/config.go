@@ -4,30 +4,66 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/bnb-chain/blob-syncer/cache"
+	syncerdb "github.com/bnb-chain/blob-syncer/db"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"log"
 	"os"
+	"time"
 )
 
-type Config struct {
-	LogConfig    LogConfig    `json:"log_config"`
-	DBConfig     DBConfig     `json:"db_config"`
-	SyncerConfig SyncerConfig `json:"syncer_config"`
-	ServerConfig ServerConfig `json:"server_config"`
-	CacheConfig  CacheConfig  `json:"cache_config"`
+type SyncerConfig struct {
+	BucketName               string    `json:"bucket_name"`                 // BucketName is the identifier of bucket on Greenfield that store blob
+	StartSlot                uint64    `json:"start_slot"`                  // StartSlot is used to init the syncer which slot of beacon chain to synced from, only need to provide once.
+	CreateBundleSlotInterval uint64    `json:"create_bundle_slot_interval"` // CreateBundleSlotInterval defines the number of slot that syncer would assemble blobs and upload to bundle service
+	BundleServiceEndpoints   []string  `json:"bundle_service_endpoints"`    // BundleServiceEndpoints is a list of bundle service address
+	BeaconRPCAddrs           []string  `json:"beacon_rpc_addrs"`            // BeaconRPCAddrs is a list of beacon chain RPC address
+	ETHRPCAddrs              []string  `json:"eth_rpc_addrs"`
+	TempDir                  string    `json:"temp_dir"`    // TempDir is used to store blobs and created bundle
+	PrivateKey               string    `json:"private_key"` // PrivateKey is the key of bucket owner, request to bundle service will be signed by it as well.
+	DBConfig                 DBConfig  `json:"db_config"`
+	LogConfig                LogConfig `json:"log_config"`
 }
 
-type SyncerConfig struct {
-	BucketName             string   `json:"bucket_name"`              // BucketName is the identifier of bucket on Greenfield that store blob
-	StartSlot              uint64   `json:"start_slot"`               // StartSlot is used to init the syncer which slot of beacon chain to synced from
-	BundleServiceEndpoints []string `json:"bundle_service_endpoints"` // BundleServiceEndpoints is a list of bundle service address
-	BeaconRPCAddrs         []string `json:"beacon_rpc_addrs"`         // BeaconRPCAddrs is a list of beacon chain RPC address
-	ETHRPCAddrs            []string `json:"eth_rpc_addrs"`
-	TempFilePath           string   `json:"temp_file_path"` // TempFilePath used to create file for every blob.
-	PrivateKey             string   `json:"private_key"`
+func (s *SyncerConfig) Validate() {
+	if len(s.BundleServiceEndpoints) == 0 {
+		panic("BundleService endpoints should not be empty")
+	}
+	if len(s.BeaconRPCAddrs) == 0 {
+		panic("beacon rpc address should not be empty")
+	}
+	if len(s.ETHRPCAddrs) == 0 {
+		panic("eth rpc address should not be empty")
+	}
+	if len(s.TempDir) == 0 {
+		panic("temp directory to hold files is missing")
+	}
+	if len(s.PrivateKey) == 0 {
+		panic("private key is not provided")
+	}
+	s.DBConfig.Validate()
+}
+
+func (s *SyncerConfig) GetCreateBundleSlotInterval() uint64 {
+	if s.CreateBundleSlotInterval == 0 {
+		return DefaultCreateBundleSlotInterval
+	}
+	return s.CreateBundleSlotInterval
 }
 
 type ServerConfig struct {
-	BucketName         string   `json:"bucket_name"`
-	BundleServiceAddrs []string `json:"bundle_service_addrs"`
+	BucketName             string      `json:"bucket_name"`
+	BundleServiceEndpoints []string    `json:"bundle_service_endpoints"` // BundleServiceEndpoints is a list of bundle service address
+	CacheConfig            CacheConfig `json:"cache_config"`
+	DBConfig               DBConfig    `json:"db_config"`
+}
+
+func (s *ServerConfig) Validate() {
+	if len(s.BundleServiceEndpoints) == 0 {
+		panic("BundleService endpoints should not be empty")
+	}
+	s.DBConfig.Validate()
 }
 
 type CacheConfig struct {
@@ -53,8 +89,8 @@ type DBConfig struct {
 }
 
 func (cfg *DBConfig) Validate() {
-	if cfg.Dialect != DBDialectMysql && cfg.Dialect != DBDialectSqlite3 {
-		panic(fmt.Sprintf("only %s and %s supported", DBDialectMysql, DBDialectSqlite3))
+	if cfg.Dialect != DBDialectMysql {
+		panic(fmt.Sprintf("only %s supported", DBDialectMysql))
 	}
 	if cfg.Dialect == DBDialectMysql && (cfg.Username == "" || cfg.Url == "") {
 		panic("db config is not correct, missing username and/or url")
@@ -89,25 +125,82 @@ func (cfg *LogConfig) Validate() {
 	}
 }
 
-func ParseConfigFromJson(content string) *Config {
-	var config Config
-	if err := json.Unmarshal([]byte(content), &config); err != nil {
-		panic(err)
-	}
-	//config.Validate()
-	return &config
-}
-
-func ParseConfigFromFile(filePath string) *Config {
+func ParseSyncerConfigFromFile(filePath string) *SyncerConfig {
 	bz, err := os.ReadFile(filePath)
 	if err != nil {
 		panic(err)
 	}
 
-	var config Config
-	if err := json.Unmarshal(bz, &config); err != nil {
+	var config SyncerConfig
+	if err = json.Unmarshal(bz, &config); err != nil {
 		panic(err)
 	}
-	//config.Validate()
+	if config.DBConfig.Username == "" || config.DBConfig.Password == "" { // read password from ENV
+		config.DBConfig.Username, config.DBConfig.Password = GetDBUsernamePasswordFromEnv()
+	}
+	if config.PrivateKey == "" { // read private key from ENV
+		config.PrivateKey = os.Getenv(EnvVarPrivateKey)
+	}
 	return &config
+}
+
+func ParseServerConfigFromFile(filePath string) *ServerConfig {
+	bz, err := os.ReadFile(filePath)
+	if err != nil {
+		panic(err)
+	}
+
+	var config ServerConfig
+	if err = json.Unmarshal(bz, &config); err != nil {
+		panic(err)
+	}
+	if config.DBConfig.Username == "" || config.DBConfig.Password == "" { // read password from ENV
+		config.DBConfig.Username, config.DBConfig.Password = GetDBUsernamePasswordFromEnv()
+	}
+	return &config
+}
+
+func GetDBUsernamePasswordFromEnv() (string, string) {
+	username := os.Getenv(EnvVarDBUserName)
+	password := os.Getenv(EnvVarDBUserPass)
+	return username, password
+}
+
+func InitDBWithConfig(cfg *DBConfig, writeAccess bool) *gorm.DB {
+	var db *gorm.DB
+	var err error
+	var dialector gorm.Dialector
+
+	if cfg.Dialect == DBDialectMysql {
+		url := cfg.Url
+		dbPath := fmt.Sprintf("%s:%s@%s", cfg.Username, cfg.Password, url)
+		dialector = mysql.Open(dbPath)
+	} else {
+		panic(fmt.Sprintf("unexpected DB dialect %s", cfg.Dialect))
+	}
+	newLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		logger.Config{
+			SlowThreshold:             time.Microsecond, // Slow SQL threshold
+			LogLevel:                  logger.Info,      // Log level
+			IgnoreRecordNotFoundError: true,             // Ignore ErrRecordNotFound error for logger
+			Colorful:                  true,             // Disable color
+		},
+	)
+	db, err = gorm.Open(dialector, &gorm.Config{
+		Logger: newLogger,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("open db error, err=%s", err.Error()))
+	}
+	dbConfig, err := db.DB()
+	if err != nil {
+		panic(err)
+	}
+	dbConfig.SetMaxIdleConns(cfg.MaxIdleConns)
+	dbConfig.SetMaxOpenConns(cfg.MaxOpenConns)
+	if writeAccess {
+		syncerdb.AutoMigrateDB(db)
+	}
+	return db
 }

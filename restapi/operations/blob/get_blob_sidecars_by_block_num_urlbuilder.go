@@ -16,7 +16,9 @@ import (
 
 // GetBlobSidecarsByBlockNumURL generates an URL for the get blob sidecars by block num operation
 type GetBlobSidecarsByBlockNumURL struct {
-	BlockNum int64
+	BlockID string
+
+	Indices []string
 
 	_basePath string
 	// avoid unkeyed usage
@@ -42,13 +44,13 @@ func (o *GetBlobSidecarsByBlockNumURL) SetBasePath(bp string) {
 func (o *GetBlobSidecarsByBlockNumURL) Build() (*url.URL, error) {
 	var _result url.URL
 
-	var _path = "/beacon/blob_sidecars/{blockNum}"
+	var _path = "/beacon/blob_sidecars/{block_id}"
 
-	blockNum := swag.FormatInt64(o.BlockNum)
-	if blockNum != "" {
-		_path = strings.Replace(_path, "{blockNum}", blockNum, -1)
+	blockID := o.BlockID
+	if blockID != "" {
+		_path = strings.Replace(_path, "{block_id}", blockID, -1)
 	} else {
-		return nil, errors.New("blockNum is required on GetBlobSidecarsByBlockNumURL")
+		return nil, errors.New("blockId is required on GetBlobSidecarsByBlockNumURL")
 	}
 
 	_basePath := o._basePath
@@ -56,6 +58,27 @@ func (o *GetBlobSidecarsByBlockNumURL) Build() (*url.URL, error) {
 		_basePath = "/eth/v1"
 	}
 	_result.Path = golangswaggerpaths.Join(_basePath, _path)
+
+	qs := make(url.Values)
+
+	var indicesIR []string
+	for _, indicesI := range o.Indices {
+		indicesIS := indicesI
+		if indicesIS != "" {
+			indicesIR = append(indicesIR, indicesIS)
+		}
+	}
+
+	indices := swag.JoinByFormat(indicesIR, "")
+
+	if len(indices) > 0 {
+		qsv := indices[0]
+		if qsv != "" {
+			qs.Set("indices", qsv)
+		}
+	}
+
+	_result.RawQuery = qs.Encode()
 
 	return &_result, nil
 }

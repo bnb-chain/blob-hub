@@ -256,7 +256,7 @@ func (o *BlobSyncerAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
-	o.handlers["GET"]["/beacon/blob_sidecars/{blockNum}"] = blob.NewGetBlobSidecarsByBlockNum(o.context, o.BlobGetBlobSidecarsByBlockNumHandler)
+	o.handlers["GET"]["/beacon/blob_sidecars/{block_id}"] = blob.NewGetBlobSidecarsByBlockNum(o.context, o.BlobGetBlobSidecarsByBlockNumHandler)
 }
 
 // Serve creates a http handler to serve the API over HTTP

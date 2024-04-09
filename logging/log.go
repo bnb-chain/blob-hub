@@ -1,11 +1,12 @@
 package logging
 
 import (
-	"github.com/bnb-chain/blob-syncer/config"
 	"os"
 
 	"github.com/op/go-logging"
 	"gopkg.in/natefinch/lumberjack.v2"
+
+	"github.com/bnb-chain/blob-syncer/config"
 )
 
 var (

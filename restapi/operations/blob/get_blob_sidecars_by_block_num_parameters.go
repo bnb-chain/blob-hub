@@ -9,9 +9,11 @@ import (
 	"net/http"
 
 	"github.com/go-openapi/errors"
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // NewGetBlobSidecarsByBlockNumParams creates a new GetBlobSidecarsByBlockNumParams object
@@ -31,11 +33,16 @@ type GetBlobSidecarsByBlockNumParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*blockNum
+	/*Block identifier. Can be one of: 'head' (canonical head in node's view), 'genesis', 'finalized', <slot>, <hex encoded blockRoot with 0x prefix>
 	  Required: true
+	  Min Length: 1
 	  In: path
 	*/
-	BlockNum int64
+	BlockID string
+	/*Array of indices for blob sidecars to request for in the specified block. Returns all blob sidecars in the block if not specified
+	  In: query
+	*/
+	Indices []string
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -47,8 +54,15 @@ func (o *GetBlobSidecarsByBlockNumParams) BindRequest(r *http.Request, route *mi
 
 	o.HTTPRequest = r
 
-	rBlockNum, rhkBlockNum, _ := route.Params.GetOK("blockNum")
-	if err := o.bindBlockNum(rBlockNum, rhkBlockNum, route.Formats); err != nil {
+	qs := runtime.Values(r.URL.Query())
+
+	rBlockID, rhkBlockID, _ := route.Params.GetOK("block_id")
+	if err := o.bindBlockID(rBlockID, rhkBlockID, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
+	qIndices, qhkIndices, _ := qs.GetOK("indices")
+	if err := o.bindIndices(qIndices, qhkIndices, route.Formats); err != nil {
 		res = append(res, err)
 	}
 	if len(res) > 0 {
@@ -57,8 +71,8 @@ func (o *GetBlobSidecarsByBlockNumParams) BindRequest(r *http.Request, route *mi
 	return nil
 }
 
-// bindBlockNum binds and validates parameter BlockNum from path.
-func (o *GetBlobSidecarsByBlockNumParams) bindBlockNum(rawData []string, hasKey bool, formats strfmt.Registry) error {
+// bindBlockID binds and validates parameter BlockID from path.
+func (o *GetBlobSidecarsByBlockNumParams) bindBlockID(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
@@ -66,12 +80,48 @@ func (o *GetBlobSidecarsByBlockNumParams) bindBlockNum(rawData []string, hasKey 
 
 	// Required: true
 	// Parameter is provided by construction from the route
+	o.BlockID = raw
 
-	value, err := swag.ConvertInt64(raw)
-	if err != nil {
-		return errors.InvalidType("blockNum", "path", "int64", raw)
+	if err := o.validateBlockID(formats); err != nil {
+		return err
 	}
-	o.BlockNum = value
+
+	return nil
+}
+
+// validateBlockID carries on validations for parameter BlockID
+func (o *GetBlobSidecarsByBlockNumParams) validateBlockID(formats strfmt.Registry) error {
+
+	if err := validate.MinLength("block_id", "path", o.BlockID, 1); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// bindIndices binds and validates array parameter Indices from query.
+//
+// Arrays are parsed according to CollectionFormat: "" (defaults to "csv" when empty).
+func (o *GetBlobSidecarsByBlockNumParams) bindIndices(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var qvIndices string
+	if len(rawData) > 0 {
+		qvIndices = rawData[len(rawData)-1]
+	}
+
+	// CollectionFormat:
+	indicesIC := swag.SplitByFormat(qvIndices, "")
+	if len(indicesIC) == 0 {
+		return nil
+	}
+
+	var indicesIR []string
+	for _, indicesIV := range indicesIC {
+		indicesI := indicesIV
+
+		indicesIR = append(indicesIR, indicesI)
+	}
+
+	o.Indices = indicesIR
 
 	return nil
 }

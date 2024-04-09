@@ -2,4 +2,5 @@
 .idea/*
 build/*
 .local
-config/local/*
+/temp/
+/config/local/

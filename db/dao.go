@@ -1,8 +1,9 @@
 package db
 
 import (
-	"gorm.io/gorm"
 	"strings"
+
+	"gorm.io/gorm"
 )
 
 type BlobDao interface {
@@ -23,12 +24,32 @@ func NewBlobSvcDB(db *gorm.DB) BlobDao {
 }
 
 type BlockDB interface {
+	GetBlock(slot int64) (*Block, error)
+	GetBlockByRoot(root string) (*Block, error)
 	GetLatestProcessedBlock() (*Block, error)
+}
+
+func (d *BlobSvcDB) GetBlock(slot int64) (*Block, error) {
+	block := Block{}
+	err := d.db.Model(Block{}).Where("slot = ?", slot).Take(&block).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	return &block, nil
+}
+
+func (d *BlobSvcDB) GetBlockByRoot(root string) (*Block, error) {
+	block := Block{}
+	err := d.db.Model(Block{}).Where("root = ?", root).Take(&block).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	return &block, nil
 }
 
 func (d *BlobSvcDB) GetLatestProcessedBlock() (*Block, error) {
 	block := Block{}
-	err := d.db.Model(Block{}).Order("height desc").Take(&block).Error
+	err := d.db.Model(Block{}).Order("slot desc").Take(&block).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err
 	}
@@ -36,13 +57,21 @@ func (d *BlobSvcDB) GetLatestProcessedBlock() (*Block, error) {
 }
 
 type BlobDB interface {
-	GetBlobs(height int64) ([]*Blob, error)
-	//UpdateBlobStatus(blobName string, status BlobStatus) error
+	GetBlobBySlot(slot int64) ([]*Blob, error)
+	GetBlobBySlotAndIndices(slot int64, indices []int64) ([]*Blob, error)
 }
 
-func (d *BlobSvcDB) GetBlobs(height int64) ([]*Blob, error) {
+func (d *BlobSvcDB) GetBlobBySlot(slot int64) ([]*Blob, error) {
 	blobs := make([]*Blob, 0)
-	if err := d.db.Where("height = ?", uint64(height)).Find(&blobs).Error; err != nil {
+	if err := d.db.Where("slot = ?", uint64(slot)).Find(&blobs).Error; err != nil {
+		return blobs, err
+	}
+	return blobs, nil
+}
+
+func (d *BlobSvcDB) GetBlobBySlotAndIndices(slot int64, indices []int64) ([]*Blob, error) {
+	blobs := make([]*Blob, 0)
+	if err := d.db.Where("slot = ? and idx in (?)", uint64(slot), indices).Find(&blobs).Error; err != nil {
 		return blobs, err
 	}
 	return blobs, nil
@@ -96,7 +125,7 @@ func (d *BlobSvcDB) SaveBlockAndBlob(block *Block, blobs []*Blob) error {
 	})
 }
 
-func InitTables(db *gorm.DB) {
+func AutoMigrateDB(db *gorm.DB) {
 	var err error
 	if err = db.AutoMigrate(&Bundle{}); err != nil {
 		panic(err)

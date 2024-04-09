@@ -7,20 +7,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	bundlesdk "github.com/bnb-chain/greenfield-bundle-sdk/bundle"
-	bundlesdktypes "github.com/bnb-chain/greenfield-bundle-sdk/types"
+	"io"
+	"mime"
+	"mime/multipart"
+	"net/http"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	modle "github.com/node-real/greenfield-bundle-service/models"
 	"github.com/node-real/greenfield-bundle-service/types"
-	"mime"
-	"path/filepath"
 
-	"io"
-	"mime/multipart"
-	"net/http"
-	"os"
-	"time"
+	bundlesdk "github.com/bnb-chain/greenfield-bundle-sdk/bundle"
+	bundlesdktypes "github.com/bnb-chain/greenfield-bundle-sdk/types"
 )
 
 const (
@@ -41,6 +42,23 @@ var (
 	ErrorBundleObjectNotExist = errors.New("the bundle object not exist in bundle service")
 )
 
+type BundleClientOption interface {
+	Apply(*BundleClient)
+}
+
+type BundleClientOptionFunc func(*BundleClient)
+
+// Apply set up the option field to the client instance.
+func (f BundleClientOptionFunc) Apply(client *BundleClient) {
+	f(client)
+}
+
+func WithPrivateKey(privateKey []byte) BundleClientOption {
+	return BundleClientOptionFunc(func(client *BundleClient) {
+		client.privKey = privateKey
+	})
+}
+
 type BundleClient struct {
 	hc      *http.Client
 	host    string
@@ -48,7 +66,7 @@ type BundleClient struct {
 	addr    common.Address
 }
 
-func NewBundleClient(host string, privateKeyHex string) (*BundleClient, error) {
+func NewBundleClient(host string, opts ...BundleClientOption) (*BundleClient, error) {
 	transport := &http.Transport{
 		DisableCompression:  true,
 		MaxIdleConnsPerHost: 1000,
@@ -59,20 +77,20 @@ func NewBundleClient(host string, privateKeyHex string) (*BundleClient, error) {
 		Timeout:   10 * time.Minute,
 		Transport: transport,
 	}
-	privateKeyBytes, err := hex.DecodeString(privateKeyHex)
-	if err != nil {
-		return nil, err
+	bundleClient := &BundleClient{hc: client,
+		host: host,
 	}
-	// Convert the bytes to *ecdsa.PrivateKey
-	privateKey, err := crypto.ToECDSA(privateKeyBytes)
-	if err != nil {
-		return nil, err
+	for _, opt := range opts {
+		opt.Apply(bundleClient)
 	}
-	return &BundleClient{hc: client,
-		host:    host,
-		privKey: privateKeyBytes,
-		addr:    crypto.PubkeyToAddress(privateKey.PublicKey),
-	}, nil
+	if len(bundleClient.privKey) != 0 {
+		privateKey, err := crypto.ToECDSA(bundleClient.privKey)
+		if err != nil {
+			return nil, err
+		}
+		bundleClient.addr = crypto.PubkeyToAddress(privateKey.PublicKey)
+	}
+	return bundleClient, nil
 }
 
 func (c *BundleClient) CreateBundle(bundleName, bucketName string) error {
@@ -127,7 +145,6 @@ func (c *BundleClient) DeleteBundle(bundleName, bucketName string) error {
 		"X-Bundle-Name":             bundleName,
 		"X-Bundle-Expiry-Timestamp": fmt.Sprintf("%d", time.Now().Add(bundleExpiredTime).Unix()),
 	}
-	// delete bundle
 	resp, err := c.sendRequest(c.host+pathDeleteBundle, "POST", headers, nil)
 	if err != nil {
 		return err
@@ -143,7 +160,7 @@ func (c *BundleClient) DeleteBundle(bundleName, bucketName string) error {
 	return nil
 }
 
-func (c *BundleClient) UploadBundle(bundleName, bucketName, bundleDir, bundlePath string) error {
+func (c *BundleClient) UploadAndFinalizeBundle(bundleName, bucketName, bundleDir, bundlePath string) error {
 
 	bundleObject, _, err := bundleDirectory(bundleDir)
 	if err != nil {
@@ -347,14 +364,6 @@ func (c *BundleClient) signMessage(message []byte) ([]byte, error) {
 	return signature, err
 }
 
-func (c *BundleClient) CreateLocalBundle() (*bundlesdk.Bundle, error) {
-	return bundlesdk.NewBundle()
-}
-
-func (c *BundleClient) AppendObjectToBundle(b *bundlesdk.Bundle, objectName string, reader io.Reader, options *bundlesdktypes.AppendObjectOptions) (*bundlesdktypes.ObjectMeta, error) {
-	return b.AppendObject(objectName, reader, options)
-}
-
 func bundleDirectory(dir string) (io.ReadSeekCloser, int64, error) {
 	b, err := bundlesdk.NewBundle()
 	if err != nil {
@@ -409,8 +418,6 @@ func visit(root string, b *bundlesdk.Bundle) filepath.WalkFunc {
 			if err != nil {
 				return err
 			}
-
-			println(relativePath, hex.EncodeToString(hash[:]))
 		}
 		return nil
 	}

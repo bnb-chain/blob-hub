@@ -9,12 +9,17 @@ const (
 
 type Block struct {
 	Id            int64
-	BlockHash     string `gorm:"NOT NULL"`
-	ParentHash    string `gorm:"NOT NULL"`
-	Height        uint64 `gorm:"NOT NULL;uniqueIndex:idx_block_height"`
-	ELBlockHeight uint64
+	Root          string `gorm:"NOT NULL;index:idx_block_root;size:64"`
+	ParentRoot    string
+	StateRoot     string
+	BodyRoot      string
+	ProposerIndex uint64
+	Slot          uint64 `gorm:"NOT NULL;uniqueIndex:idx_block_slot"`
+	ELBlockHeight uint64 // the eth1 block height
 	BlobCount     int
-	Status        Status
+	KzgCommitment string
+
+	Status Status
 }
 
 func (*Block) TableName() string {

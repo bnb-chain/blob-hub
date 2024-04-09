@@ -30,7 +30,7 @@ func NewGetBlobSidecarsByBlockNum(ctx *middleware.Context, handler GetBlobSideca
 }
 
 /*
-	GetBlobSidecarsByBlockNum swagger:route GET /beacon/blob_sidecars/{blockNum} blob getBlobSidecarsByBlockNum
+	GetBlobSidecarsByBlockNum swagger:route GET /beacon/blob_sidecars/{block_id} blob getBlobSidecarsByBlockNum
 
 Get blob sidecars by block num
 */
