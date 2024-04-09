@@ -70,25 +70,19 @@ definitions:
     properties:
       index:
         type: string
-        description: "index"
         example: 1
       blob:
         type: string
-        description: "blob"
-      kzgCommitment:
+      kzg_commitment:
         type: string
-        description: "kzg_commitment"
-      kzgProof:
+      kzg_proof:
         type: string
-        description: "kzg_proof"
-      commitmentInclusionProof:
+      kzg_commitment_inclusion_proof:
         type: array
-        description: "kzg_commitment_inclusion_proof"
         items:
           type: string
-      signedBeaconBlockHeader:
+      signed_block_header:
         type: object
-        description: "signed_beacon_block_header"
         properties:
           signature:
             type: string
@@ -97,13 +91,13 @@ definitions:
             properties:
               slot:
                 type: string
-              proposerIndex:
+              proposer_index:
                 type: string
-              parentRoot:
+              parent_root:
                 type: string
-              stateRoot:
+              state_root:
                 type: string
-              bodyRoot:
+              body_root:
                 type: string
 
   Error:

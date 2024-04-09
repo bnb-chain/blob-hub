@@ -133,49 +133,43 @@ func init() {
       "type": "object",
       "properties": {
         "blob": {
-          "description": "blob",
           "type": "string"
         },
-        "commitmentInclusionProof": {
-          "description": "kzg_commitment_inclusion_proof",
+        "index": {
+          "type": "string",
+          "example": 1
+        },
+        "kzg_commitment": {
+          "type": "string"
+        },
+        "kzg_commitment_inclusion_proof": {
           "type": "array",
           "items": {
             "type": "string"
           }
         },
-        "index": {
-          "description": "index",
-          "type": "string",
-          "example": 1
-        },
-        "kzgCommitment": {
-          "description": "kzg_commitment",
+        "kzg_proof": {
           "type": "string"
         },
-        "kzgProof": {
-          "description": "kzg_proof",
-          "type": "string"
-        },
-        "signedBeaconBlockHeader": {
-          "description": "signed_beacon_block_header",
+        "signed_block_header": {
           "type": "object",
           "properties": {
             "message": {
               "type": "object",
               "properties": {
-                "bodyRoot": {
+                "body_root": {
                   "type": "string"
                 },
-                "parentRoot": {
+                "parent_root": {
                   "type": "string"
                 },
-                "proposerIndex": {
+                "proposer_index": {
                   "type": "string"
                 },
                 "slot": {
                   "type": "string"
                 },
-                "stateRoot": {
+                "state_root": {
                   "type": "string"
                 }
               }
@@ -305,49 +299,43 @@ func init() {
       "type": "object",
       "properties": {
         "blob": {
-          "description": "blob",
           "type": "string"
         },
-        "commitmentInclusionProof": {
-          "description": "kzg_commitment_inclusion_proof",
+        "index": {
+          "type": "string",
+          "example": 1
+        },
+        "kzg_commitment": {
+          "type": "string"
+        },
+        "kzg_commitment_inclusion_proof": {
           "type": "array",
           "items": {
             "type": "string"
           }
         },
-        "index": {
-          "description": "index",
-          "type": "string",
-          "example": 1
-        },
-        "kzgCommitment": {
-          "description": "kzg_commitment",
+        "kzg_proof": {
           "type": "string"
         },
-        "kzgProof": {
-          "description": "kzg_proof",
-          "type": "string"
-        },
-        "signedBeaconBlockHeader": {
-          "description": "signed_beacon_block_header",
+        "signed_block_header": {
           "type": "object",
           "properties": {
             "message": {
               "type": "object",
               "properties": {
-                "bodyRoot": {
+                "body_root": {
                   "type": "string"
                 },
-                "parentRoot": {
+                "parent_root": {
                   "type": "string"
                 },
-                "proposerIndex": {
+                "proposer_index": {
                   "type": "string"
                 },
                 "slot": {
                   "type": "string"
                 },
-                "stateRoot": {
+                "state_root": {
                   "type": "string"
                 }
               }
@@ -359,26 +347,25 @@ func init() {
         }
       }
     },
-    "SidecarSignedBeaconBlockHeader": {
-      "description": "signed_beacon_block_header",
+    "SidecarSignedBlockHeader": {
       "type": "object",
       "properties": {
         "message": {
           "type": "object",
           "properties": {
-            "bodyRoot": {
+            "body_root": {
               "type": "string"
             },
-            "parentRoot": {
+            "parent_root": {
               "type": "string"
             },
-            "proposerIndex": {
+            "proposer_index": {
               "type": "string"
             },
             "slot": {
               "type": "string"
             },
-            "stateRoot": {
+            "state_root": {
               "type": "string"
             }
           }
@@ -388,22 +375,22 @@ func init() {
         }
       }
     },
-    "SidecarSignedBeaconBlockHeaderMessage": {
+    "SidecarSignedBlockHeaderMessage": {
       "type": "object",
       "properties": {
-        "bodyRoot": {
+        "body_root": {
           "type": "string"
         },
-        "parentRoot": {
+        "parent_root": {
           "type": "string"
         },
-        "proposerIndex": {
+        "proposer_index": {
           "type": "string"
         },
         "slot": {
           "type": "string"
         },
-        "stateRoot": {
+        "state_root": {
           "type": "string"
         }
       }

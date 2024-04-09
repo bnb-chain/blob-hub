@@ -13,8 +13,8 @@ import (
 
 const bundleNotSealedAlertThresh = int64(1 * time.Hour)
 
-// Verify is used to verify the blob uploaded to bundle service is indeed in Greenfield, the intergirty
-func (s *BlobSyncer) Verify() error {
+// Verify is used to verify the blob uploaded to bundle service is indeed in Greenfield, and integrity.
+func (s *BlobSyncer) verify() error {
 
 	var err error
 	latestVerifiedBlock, err := s.blobDao.GetLatestVerifiedBlock()
@@ -129,7 +129,7 @@ func (s *BlobSyncer) Verify() error {
 		logging.Logger.Errorf("failed to update block status, slot=%d err=%s", verifyBlockSlot, err.Error())
 		return err
 	}
-	logging.Logger.Errorf("successfully verify at block slot %d ", verifyBlockSlot)
+	logging.Logger.Infof("successfully verify at block slot %d ", verifyBlockSlot)
 
 	return nil
 }

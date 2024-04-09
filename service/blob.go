@@ -75,8 +75,8 @@ func (b BlobService) GetBlobSidecarsBySlot(slot uint64, indices []int64) ([]*mod
 		if err != nil {
 			return nil, err
 		}
-		header := &models.SidecarSignedBeaconBlockHeader{
-			Message: &models.SidecarSignedBeaconBlockHeaderMessage{
+		header := &models.SidecarSignedBlockHeader{
+			Message: &models.SidecarSignedBlockHeaderMessage{
 				BodyRoot:      block.BodyRoot,
 				ParentRoot:    block.ParentRoot,
 				ProposerIndex: strconv.FormatUint(block.ProposerIndex, 10),
@@ -86,12 +86,12 @@ func (b BlobService) GetBlobSidecarsBySlot(slot uint64, indices []int64) ([]*mod
 		}
 		sideCars = append(sideCars,
 			&models.Sidecar{
-				Blob:                     bundleObject,
-				Index:                    strconv.FormatInt(int64(meta.Idx), 10),
-				CommitmentInclusionProof: util.SplitByComma(meta.CommitmentInclusionProof),
-				KzgCommitment:            meta.KzgCommitment,
-				KzgProof:                 meta.KzgProof,
-				SignedBeaconBlockHeader:  header,
+				Blob:                        bundleObject,
+				Index:                       strconv.FormatInt(int64(meta.Idx), 10),
+				KzgCommitmentInclusionProof: util.SplitByComma(meta.CommitmentInclusionProof),
+				KzgCommitment:               meta.KzgCommitment,
+				KzgProof:                    meta.KzgProof,
+				SignedBlockHeader:           header,
 			})
 	}
 

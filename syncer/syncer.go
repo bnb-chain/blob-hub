@@ -69,12 +69,23 @@ func NewBlobSyncer(
 }
 
 func (s *BlobSyncer) StartLoop() {
-	for {
-		if err := s.Verify(); err != nil {
-			logging.Logger.Error(err)
-			continue
+	go func() {
+		for {
+			if err := s.process(); err != nil {
+				logging.Logger.Error(err)
+				continue
+			}
 		}
-	}
+	}()
+
+	go func() {
+		for {
+			if err := s.verify(); err != nil {
+				logging.Logger.Error(err)
+				continue
+			}
+		}
+	}()
 }
 
 func (s *BlobSyncer) process() error {
