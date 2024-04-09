@@ -1,14 +1,3 @@
-run the syncer instance:
-```shell
-./build/blob-syncer --config-type local --config-path config/config.json
-````
-
-run the server instance
-
-```shell
-./build/blob-syncer-server --config-path config/config.json --port 8080 
-```
-
 # Blob syncer
 
 ## Overview
@@ -17,10 +6,16 @@ The blob-syncer is the service sitting between Greenfield and Ethereum, constant
 them into Greenfield storage for permanent archiving. The blob-syncer service also provides APIs for users to query historical blobs.
 
 ## Components
-- syncer: the syncer is designed to sync blobs and store into Greenfield.
-- server: the server is to serve user query request.
+- blob-syncer: the syncer is designed to sync blobs and store into Greenfield.
+- blob-syncer-server: the server is to serve user query request for Blob.
 
 ## Build
+
+### Build all
+
+```shell
+make build
+```
 
 ### Build blob syncer
 
