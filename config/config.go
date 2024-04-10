@@ -3,14 +3,16 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/bnb-chain/blob-syncer/cache"
-	syncerdb "github.com/bnb-chain/blob-syncer/db"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 	"log"
 	"os"
 	"time"
+
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+
+	"github.com/bnb-chain/blob-syncer/cache"
+	syncerdb "github.com/bnb-chain/blob-syncer/db"
 )
 
 type SyncerConfig struct {

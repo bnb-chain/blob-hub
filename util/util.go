@@ -2,9 +2,10 @@ package util
 
 import (
 	"crypto/sha256"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"strconv"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 // StringToUint64 converts string to uint64

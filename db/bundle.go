@@ -9,9 +9,10 @@ const (
 )
 
 type Bundle struct {
-	Id     int64
-	Name   string            `gorm:"NOT NULL;uniqueIndex:idx_bundle_name;size:64"`
-	Status InnerBundleStatus `gorm:"NOT NULL"`
+	Id         int64
+	Name       string            `gorm:"NOT NULL;uniqueIndex:idx_bundle_name;size:64"`
+	Status     InnerBundleStatus `gorm:"NOT NULL"`
+	Calibrated bool
 }
 
 func (*Bundle) TableName() string {

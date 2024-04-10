@@ -1,6 +1,8 @@
 package db
 
-import "github.com/go-sql-driver/mysql"
+import (
+	"github.com/go-sql-driver/mysql"
+)
 
 var (
 	ErrDuplicateEntryCode = 1062

@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"encoding/json"
+
 	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
 	v1 "github.com/prysmaticlabs/prysm/v5/proto/engine/v1"
 	ethpb "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"

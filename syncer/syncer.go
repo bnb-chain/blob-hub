@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/bnb-chain/blob-syncer/util"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -25,6 +24,7 @@ import (
 	"github.com/bnb-chain/blob-syncer/external"
 	"github.com/bnb-chain/blob-syncer/logging"
 	"github.com/bnb-chain/blob-syncer/types"
+	"github.com/bnb-chain/blob-syncer/util"
 )
 
 const (

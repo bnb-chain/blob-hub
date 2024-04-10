@@ -3,13 +3,14 @@ package handlers
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/bnb-chain/blob-syncer/util"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/go-openapi/runtime/middleware"
 
 	"github.com/bnb-chain/blob-syncer/models"
 	"github.com/bnb-chain/blob-syncer/restapi/operations/blob"
 	"github.com/bnb-chain/blob-syncer/service"
+	"github.com/bnb-chain/blob-syncer/util"
 )
 
 const rootLength = 32

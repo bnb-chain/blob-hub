@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"github.com/bnb-chain/blob-syncer/util"
 	"strconv"
 
 	"github.com/bnb-chain/blob-syncer/cache"
@@ -10,6 +9,7 @@ import (
 	"github.com/bnb-chain/blob-syncer/db"
 	"github.com/bnb-chain/blob-syncer/external"
 	"github.com/bnb-chain/blob-syncer/models"
+	"github.com/bnb-chain/blob-syncer/util"
 )
 
 type Blob interface {

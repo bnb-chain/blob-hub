@@ -4,22 +4,24 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
-	"github.com/bnb-chain/blob-syncer/db"
-	"github.com/bnb-chain/blob-syncer/logging"
-	"github.com/bnb-chain/blob-syncer/types"
-	"github.com/bnb-chain/blob-syncer/util"
-	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
+	"gorm.io/gorm"
+
+	"github.com/bnb-chain/blob-syncer/db"
+	"github.com/bnb-chain/blob-syncer/external"
+	"github.com/bnb-chain/blob-syncer/logging"
+	"github.com/bnb-chain/blob-syncer/types"
+	"github.com/bnb-chain/blob-syncer/util"
 )
 
 var (
 	ErrVerificationFailed = errors.New("verification failed")
+	ErrBundleNotSealed    = errors.New("bundle not sealed yet")
 )
-
-const bundleNotSealedAlertThresh = int64(1 * time.Hour)
 
 // Verify is used to verify the blob uploaded to bundle service is indeed in Greenfield, and integrity.
 func (s *BlobSyncer) verify() error {
@@ -45,6 +47,9 @@ func (s *BlobSyncer) verify() error {
 
 	verifyBlock, err := s.blobDao.GetBlock(verifyBlockSlot)
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil
+		}
 		logging.Logger.Errorf("failed to get block from DB, slot=%d err=%s", verifyBlockSlot, err.Error())
 		return err
 	}
@@ -78,7 +83,9 @@ func (s *BlobSyncer) verify() error {
 
 	err = s.verifyBlobAtSlot(verifyBlockSlot, sideCars, blobMetas, bundleName)
 	if err != nil {
-		logging.Logger.Errorf("failed to verifyBlobAtSlot, slot=%d err=%s", verifyBlockSlot, err.Error())
+		if err == external.ErrorBundleNotExist || err == ErrBundleNotSealed {
+			return nil
+		}
 		if err == ErrVerificationFailed {
 			return s.reUploadBundle(bundleName)
 		}
@@ -100,19 +107,17 @@ func (s *BlobSyncer) verifyBlobAtSlot(slot uint64, sidecars []*structs.Sidecar, 
 		return err
 	}
 	if bundleInfo.Status == BundleStatusFinalized || bundleInfo.Status == BundleStatusCreatedOnChain {
-		if time.Now().Unix()-bundleInfo.CreatedTimestamp > bundleNotSealedAlertThresh {
-			// todo alarm
-			return fmt.Errorf("the bundle is supposed to be sealed")
-		}
-		return nil
-	} else if bundleInfo.Status != BundleStatusSealedOnChain {
-		return fmt.Errorf("unexpect status, should not happen")
+		return ErrBundleNotSealed
 	}
 
 	for i := 0; i < len(sidecars); i++ {
 		// get blob from bundle servic
 		blobFromBundle, err := s.bundleClient.GetObject(s.getBucketName(), bundleName, types.GetBlobName(slot, i))
 		if err != nil {
+			if err == external.ErrorBundleObjectNotExist {
+				logging.Logger.Errorf("the bundle object not found in bundle service, object=%s", types.GetBlobName(slot, i))
+				return ErrVerificationFailed
+			}
 			return err
 		}
 
@@ -156,15 +161,14 @@ func (s *BlobSyncer) verifyBlobAtSlot(slot uint64, sidecars []*structs.Sidecar, 
 }
 
 func (s *BlobSyncer) reUploadBundle(bundleName string) error {
-	newBundleName := bundleName + "-calibrated-" + util.Int64ToString(time.Now().Unix())
+	newBundleName := bundleName + "_calibrated_" + util.Int64ToString(time.Now().Unix())
 	startSlot, endSlot, err := types.ParseBundleName(bundleName)
 	if err != nil {
 		return err
 	}
-	calibratedBundleDir := fmt.Sprintf("%s/%s/", s.config.TempDir, newBundleName)
-	_, err = os.Stat(calibratedBundleDir)
+	_, err = os.Stat(s.getBundleDir(newBundleName))
 	if os.IsNotExist(err) {
-		err = os.MkdirAll(filepath.Dir(calibratedBundleDir), os.ModePerm)
+		err = os.MkdirAll(filepath.Dir(s.getBundleDir(newBundleName)), os.ModePerm)
 		if err != nil {
 			return err
 		}
@@ -199,8 +203,7 @@ func (s *BlobSyncer) reUploadBundle(bundleName string) error {
 		logging.Logger.Infof("save calibrated block(slot=%d) and blobs(num=%d) to DB \n", slot, len(blobToSave))
 	}
 
-	bundleFilePath := fmt.Sprintf("%s/%s.bundle", s.config.TempDir, bundleName)
-	if err := s.finalizeBundle(bundleName, calibratedBundleDir, bundleFilePath); err != nil {
+	if err := s.finalizeBundle(newBundleName, s.getBundleDir(newBundleName), s.getBundleFilePath(newBundleName)); err != nil {
 		return err
 	}
 	return nil

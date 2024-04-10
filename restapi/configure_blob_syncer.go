@@ -4,6 +4,13 @@ package restapi
 
 import (
 	"crypto/tls"
+	"net/http"
+	"os"
+
+	"github.com/go-openapi/errors"
+	"github.com/go-openapi/runtime"
+	"github.com/go-openapi/swag"
+
 	"github.com/bnb-chain/blob-syncer/cache"
 	"github.com/bnb-chain/blob-syncer/config"
 	syncerdb "github.com/bnb-chain/blob-syncer/db"
@@ -12,11 +19,6 @@ import (
 	"github.com/bnb-chain/blob-syncer/restapi/operations"
 	"github.com/bnb-chain/blob-syncer/restapi/operations/blob"
 	"github.com/bnb-chain/blob-syncer/service"
-	"github.com/go-openapi/errors"
-	"github.com/go-openapi/runtime"
-	"github.com/go-openapi/swag"
-	"net/http"
-	"os"
 )
 
 //go:generate swagger generate server --target ../../blob-syncer --name BlobSyncer --spec ../swagger.yaml --principal interface{}

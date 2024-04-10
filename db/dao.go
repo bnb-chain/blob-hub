@@ -33,7 +33,7 @@ type BlockDB interface {
 func (d *BlobSvcDB) GetBlock(slot uint64) (*Block, error) {
 	block := Block{}
 	err := d.db.Model(Block{}).Where("slot = ?", slot).Take(&block).Error
-	if err != nil && err != gorm.ErrRecordNotFound {
+	if err != nil {
 		return nil, err
 	}
 	return &block, nil
@@ -111,7 +111,7 @@ type BundleDB interface {
 
 func (d *BlobSvcDB) GetLatestFinalizingBundle() (*Bundle, error) {
 	bundle := Bundle{}
-	err := d.db.Model(Bundle{}).Where("status = ?", Finalizing).Order("id desc").Take(&bundle).Error
+	err := d.db.Model(Bundle{}).Where("status = ? and calibrated = false", Finalizing).Order("id desc").Take(&bundle).Error
 	if err != nil {
 		return nil, err
 	}

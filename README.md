@@ -52,10 +52,10 @@ The Blob syncer server provides eth compatible API to query historical blob
 
 * GET /eth/v1/beacon/blob_sidecars/{block_id}
 
-| ParameterName | Type   | Description                                                                                                                                                            |
-|--------------| ------ |------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| block_id     | string | Block identifier. Can be one of:  <slot>, <hex encoded blockRoot with 0x prefix>. note: "head" (canonical head in node's view), "genesis", "finalized" are not support |
-| indices         | array<string> | Array of indices for blob sidecars to request for in the specified block. Returns all blob sidecars in the block if not specified                                      |
+| ParameterName | Type            | Description                                                                                                                                                          |
+|--------------|-----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| block_id     | string          | Block identifier. Can be one of: slot,  <hex encoded blockRoot with 0x prefix>. note: "head" (canonical head in node's view), "genesis", "finalized" are not support |
+| indices         | array of string | Array of indices for blob sidecars to request for in the specified block. Returns all blob sidecars in the block if not specified                                    |
 
 
 200: Ok response

@@ -2,13 +2,15 @@ package main
 
 import (
 	"flag"
+	"os"
+
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
+
 	"github.com/bnb-chain/blob-syncer/config"
 	syncerdb "github.com/bnb-chain/blob-syncer/db"
 	"github.com/bnb-chain/blob-syncer/logging"
 	"github.com/bnb-chain/blob-syncer/syncer"
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
-	"os"
 )
 
 func initFlags() {
@@ -31,7 +33,6 @@ func main() {
 	if configFilePath == "" {
 		configFilePath = os.Getenv(config.EnvVarConfigFilePath)
 	}
-	configFilePath = "config/local/config-syncer.json"
 	cfg = config.ParseSyncerConfigFromFile(configFilePath)
 	if cfg == nil {
 		panic("failed to get configuration")
