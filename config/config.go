@@ -27,6 +27,12 @@ type SyncerConfig struct {
 }
 
 func (s *SyncerConfig) Validate() {
+	if len(s.BucketName) == 0 {
+		panic("the Greenfield bucket name is not is not provided")
+	}
+	if s.StartSlot == 0 {
+		panic("the start slot to sync slot is not provided")
+	}
 	if len(s.BundleServiceEndpoints) == 0 {
 		panic("BundleService endpoints should not be empty")
 	}
@@ -37,7 +43,7 @@ func (s *SyncerConfig) Validate() {
 		panic("eth rpc address should not be empty")
 	}
 	if len(s.TempDir) == 0 {
-		panic("temp directory to hold files is missing")
+		panic("temp directory is not specified")
 	}
 	if len(s.PrivateKey) == 0 {
 		panic("private key is not provided")
@@ -63,6 +69,9 @@ type ServerConfig struct {
 }
 
 func (s *ServerConfig) Validate() {
+	if len(s.BucketName) == 0 {
+		panic("the Greenfield bucket name is not is not provided")
+	}
 	if len(s.BundleServiceEndpoints) == 0 {
 		panic("BundleService endpoints should not be empty")
 	}
@@ -152,7 +161,6 @@ func ParseServerConfigFromFile(filePath string) *ServerConfig {
 	if err != nil {
 		panic(err)
 	}
-
 	var config ServerConfig
 	if err = json.Unmarshal(bz, &config); err != nil {
 		panic(err)

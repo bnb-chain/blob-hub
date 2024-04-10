@@ -149,13 +149,12 @@ func (s *BlobSyncer) process() error {
 			return err
 		}
 	}
-	err = s.writeBlobToFile(nextSlot, sideCars)
-	if err != nil {
+	if err = s.writeBlobToFile(nextSlot, bundleName, sideCars); err != nil {
 		return err
 	}
 
 	if nextSlot == s.bundleDetail.finalizeSlot {
-		err = s.finalizeBundle(bundleName)
+		err = s.finalizeCurBundle(bundleName)
 		if err != nil {
 			return err
 		}
@@ -213,9 +212,10 @@ func (s *BlobSyncer) calNextSlot() (uint64, error) {
 
 // createLocalBundleDir creates an empty dir to hold blob files among a range of blocks, the blobs in this dir will be assembled into a bundle and uploaded to bundle service
 func (s *BlobSyncer) createLocalBundleDir() error {
-	_, err := os.Stat(s.getBundleDir())
+	bundleName := s.bundleDetail.name
+	_, err := os.Stat(s.getBundleDir(bundleName))
 	if os.IsNotExist(err) {
-		err = os.MkdirAll(filepath.Dir(s.getBundleDir()), os.ModePerm)
+		err = os.MkdirAll(filepath.Dir(s.getBundleDir(bundleName)), os.ModePerm)
 		if err != nil {
 			return err
 		}
@@ -226,29 +226,32 @@ func (s *BlobSyncer) createLocalBundleDir() error {
 			Status: db.Finalizing,
 		})
 }
-
-func (s *BlobSyncer) finalizeBundle(bundleName string) error {
-	err := s.bundleClient.UploadAndFinalizeBundle(bundleName, s.getBucketName(), s.getBundleDir(), s.getBundleFilePath())
+func (s *BlobSyncer) finalizeBundle(bundleName, bundleDir, bundleFilePath string) error {
+	err := s.bundleClient.UploadAndFinalizeBundle(bundleName, s.getBucketName(), bundleDir, bundleFilePath)
 	if err != nil {
 		if !strings.Contains(err.Error(), "Object exists") && !strings.Contains(err.Error(), "empty bundle") {
 			return err
 		}
 	}
-	err = os.RemoveAll(s.getBundleDir())
+	err = os.RemoveAll(bundleDir)
 	if err != nil {
 		return err
 	}
-	err = os.Remove(s.getBundleFilePath())
+	err = os.Remove(bundleFilePath)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	return s.blobDao.UpdateBundleStatus(bundleName, db.Finalized)
 }
 
-func (s *BlobSyncer) writeBlobToFile(slot uint64, blobs []*structs.Sidecar) error {
+func (s *BlobSyncer) finalizeCurBundle(bundleName string) error {
+	return s.finalizeBundle(bundleName, s.getBundleDir(bundleName), s.getBundleFilePath(bundleName))
+}
+
+func (s *BlobSyncer) writeBlobToFile(slot uint64, bundleName string, blobs []*structs.Sidecar) error {
 	for i, b := range blobs {
 		blobName := types.GetBlobName(slot, i)
-		file, err := os.Create(s.getBlobPath(blobName))
+		file, err := os.Create(s.getBlobPath(bundleName, blobName))
 		if err != nil {
 			logging.Logger.Errorf("failed to create file, err=%s", err.Error())
 			return err
@@ -256,22 +259,23 @@ func (s *BlobSyncer) writeBlobToFile(slot uint64, blobs []*structs.Sidecar) erro
 		defer file.Close()
 		_, err = file.WriteString(b.Blob)
 		if err != nil {
-			return fmt.Errorf("failed to write string, err=%s", err.Error())
+			logging.Logger.Errorf("failed to  write string, err=%s", err.Error())
+			return err
 		}
 	}
 	return nil
 }
 
-func (s *BlobSyncer) getBundleDir() string {
-	return fmt.Sprintf("%s/%s/", s.config.TempDir, s.bundleDetail.name)
+func (s *BlobSyncer) getBundleDir(bundleName string) string {
+	return fmt.Sprintf("%s/%s/", s.config.TempDir, bundleName)
 }
 
-func (s *BlobSyncer) getBlobPath(blobName string) string {
-	return fmt.Sprintf("%s/%s/%s", s.config.TempDir, s.bundleDetail.name, blobName)
+func (s *BlobSyncer) getBlobPath(bundleName, blobName string) string {
+	return fmt.Sprintf("%s/%s/%s", s.config.TempDir, bundleName, blobName)
 }
 
-func (s *BlobSyncer) getBundleFilePath() string {
-	return fmt.Sprintf("%s/%s.bundle", s.config.TempDir, s.bundleDetail.name)
+func (s *BlobSyncer) getBundleFilePath(bundleName string) string {
+	return fmt.Sprintf("%s/%s.bundle", s.config.TempDir, bundleName)
 }
 
 func (s *BlobSyncer) LoadProgressAndResume(nextSlot uint64) error {

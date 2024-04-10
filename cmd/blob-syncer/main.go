@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/bnb-chain/blob-syncer/config"
 	syncerdb "github.com/bnb-chain/blob-syncer/db"
 	"github.com/bnb-chain/blob-syncer/logging"
@@ -22,10 +21,6 @@ func initFlags() {
 	}
 }
 
-func printUsage() {
-	fmt.Print("usage: ./blob-syncer --config-path configFile\n")
-}
-
 func main() {
 	var (
 		cfg            *config.SyncerConfig
@@ -36,10 +31,7 @@ func main() {
 	if configFilePath == "" {
 		configFilePath = os.Getenv(config.EnvVarConfigFilePath)
 	}
-	if configFilePath == "" {
-		printUsage()
-		return
-	}
+	configFilePath = "config/local/config-syncer.json"
 	cfg = config.ParseSyncerConfigFromFile(configFilePath)
 	if cfg == nil {
 		panic("failed to get configuration")

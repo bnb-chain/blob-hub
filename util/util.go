@@ -53,3 +53,13 @@ func GenerateHash(hexStr string) ([]byte, error) {
 	hash.Write(bz)
 	return hash.Sum(nil), nil
 }
+
+// Uint64ToString coverts uint64 to string
+func Uint64ToString(u uint64) string {
+	return strconv.FormatUint(u, 10)
+}
+
+// Int64ToString coverts uint64 to string
+func Int64ToString(u int64) string {
+	return strconv.FormatInt(u, 10)
+}
