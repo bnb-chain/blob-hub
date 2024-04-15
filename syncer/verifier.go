@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/bnb-chain/blob-syncer/metrics"
 	"os"
 	"path/filepath"
 	"time"
@@ -15,6 +14,7 @@ import (
 	"github.com/bnb-chain/blob-syncer/db"
 	"github.com/bnb-chain/blob-syncer/external"
 	"github.com/bnb-chain/blob-syncer/logging"
+	"github.com/bnb-chain/blob-syncer/metrics"
 	"github.com/bnb-chain/blob-syncer/types"
 	"github.com/bnb-chain/blob-syncer/util"
 )

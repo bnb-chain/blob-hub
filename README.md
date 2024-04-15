@@ -1,20 +1,18 @@
 # Blob Syncer
 
+## Overview
+
+The Blob-Syncer is the service sitting between Greenfield and Ethereum, it constantly fetches blobs from Ethereum, blobs from a range of slots will be assembled into a bundle and
+uploaded to the [Bundle Service](https://docs.bnbchain.org/greenfield-docs/docs/api/bundle-service/), finally persisted into Greenfield for permanent archiving. The blob-syncer service also provides APIs for users to query historical blobs.
+
 ## Disclaimer
 **The software and related documentation are under active development, all subject to potential future change without
 notification and not ready for production use. The code and security audit have not been fully completed and not ready
 for any bug bounty. We advise you to be careful and experiment on the network at your own risk. Stay safe out there.**
 
-## Overview
-
-The Blob-Syncer is the service sitting between Greenfield and Ethereum, constantly fetching blobs from Ethereum and persisting
-them into Greenfield storage for permanent archiving. The blob-syncer service also provides APIs for users to query historical blobs.
-
 ## Components
-- blob-syncer: the syncer is designed to sync blobs and store them onto Greenfield; there is also a post-verification routine conducted to verify blob storage integrity.
+- blob-syncer: the syncer is designed to sync blobs and store them into Greenfield; there is also a post-verification routine conducted to verify blob storage integrity.
 - blob-syncer-server: the API server to serve users' query request for Blob.
-
-You might want to run 1 instance of syncer, while multiple servers can be run to fulfill requests.
 
 ## Requirement
 
@@ -57,7 +55,7 @@ if you don't have a bucket yet, set up one for blob storage. There are a few way
 	log.Println("bucket info:", bucketInfo.String())
 ```
 
-or you can use the script provided, before runinng it, modify the the scripts/.env file(the GRANTEE_BUNDLE_ACCOUNT does not need to modified at this moment), and then execute:
+or you can use the script provided, before runinng it, modify the the scripts/.env file(the GRANTEE_BUNDLE_ACCOUNT does not need to modified at this moment):
 
 ```shell
 bash scripts/set_up.sh --create_bucket
@@ -65,15 +63,14 @@ bash scripts/set_up.sh --create_bucket
 
 2. Get a Bundler Account
 
-Request a bundle account from the Bundle Service, you need to grant such account in next step, so that bundle service
-can create object behave of you.
+Request a bundle account from the Bundle Service, you need to grant the bundle account permission in next step, so that bundle service
+can create object behave of your account.
 
 ```shell
 curl -X POST  https://gnfd-testnet-bundle.nodereal.io/v1/bundlerAccount/0xf74d8897D8BeafDF4b766E19A62078DE84570656
 
 {"address":"0x4605BFc98E0a5EA63D9D5a4a1Df549732a6963f3"}
 ```
-
 
 3. Grant fee and permission to the bundle address for creating bundled objects under the bucket
 
@@ -109,12 +106,12 @@ grant allowance
 You can find similar example [permission](https://github.com/bnb-chain/greenfield-go-sdk/blob/master/examples/permission.go):
 
 
-or you can use the script and execute, replace GRANTEE_BUNDLE_ACCOUNT with the addr got from step 2:
+or you can use the script, replace `GRANTEE_BUNDLE_ACCOUNT` with the addr got from Bundle Service in step 2, and modify the `ALLOWANCE` to your expect amount, so that transacion
+gas will be paid your account:
 
 ```shell
 bash scripts/set_up.sh --grant
 ```
-
 
 After above steps are done, you can start running the Blob Syncer Service.
 
@@ -151,7 +148,7 @@ make build_server
 {
   "bucket_name": "your-bucket",
   "start_slot": 8783000,
-  "create_bundle_slot_interval": 5,
+  "create_bundle_slot_interval": 10,
   "beacon_rpc_addrs": [
   "https://eth2-beacon-mainnet.nodereal.io"
   ],
@@ -205,7 +202,7 @@ The Blob syncer server provides eth compatible API to query historical blob
 
 | ParameterName | Type            | Description                                                                                                                                                          |
 | ------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| block_id      | string          | Block identifier. Can be one of: slot,  <hex encoded blockRoot with 0x prefix>. note: "head" (canonical head in node's view), "genesis", "finalized" are not support |
+| block_id      | string          | Block identifier. Can be one of: slot(beacon chain),  <hex encoded blockRoot with 0x prefix>. note: "head" (canonical head in node's view), "genesis", "finalized" are not support |
 | indices       | array of string | Array of indices for blob sidecars to request for in the specified block. Returns all blob sidecars in the block if not specified                                    |
 
 
@@ -247,8 +244,7 @@ The Blob syncer server provides eth compatible API to query historical blob
           "state_root": "0xf014944ead7b1524d3b3d3e76c0285e20ffb277f3778c5f6be63c487904204cf"
         }
       }
-    },
-    ....
+    }
   ]
 } 
 ```

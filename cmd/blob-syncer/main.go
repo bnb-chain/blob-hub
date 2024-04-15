@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"github.com/bnb-chain/blob-syncer/metrics"
 	"os"
 
 	"github.com/spf13/pflag"
@@ -11,6 +10,7 @@ import (
 	"github.com/bnb-chain/blob-syncer/config"
 	syncerdb "github.com/bnb-chain/blob-syncer/db"
 	"github.com/bnb-chain/blob-syncer/logging"
+	"github.com/bnb-chain/blob-syncer/metrics"
 	"github.com/bnb-chain/blob-syncer/syncer"
 )
 
@@ -34,7 +34,6 @@ func main() {
 	if configFilePath == "" {
 		configFilePath = os.Getenv(config.EnvVarConfigFilePath)
 	}
-	configFilePath = "config/local/config-syncer.json"
 	cfg = config.ParseSyncerConfigFromFile(configFilePath)
 	if cfg == nil {
 		panic("failed to get configuration")

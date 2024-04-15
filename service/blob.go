@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+
 	"github.com/bnb-chain/blob-syncer/cache"
 	"github.com/bnb-chain/blob-syncer/config"
 	"github.com/bnb-chain/blob-syncer/db"

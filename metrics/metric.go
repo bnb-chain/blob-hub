@@ -1,11 +1,13 @@
 package metrics
 
 import (
-	"github.com/bnb-chain/blob-syncer/logging"
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"net/http"
+
+	"github.com/bnb-chain/blob-syncer/logging"
 )
 
 var (

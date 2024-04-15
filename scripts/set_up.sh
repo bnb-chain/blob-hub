@@ -42,7 +42,7 @@ function grant() {
 
     ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt policy put --grantee ${GRANTEE_BUNDLE_ACCOUNT} --actions createObj  grn:b::"$BUCKET_NAME"
     sleep 5
-    ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt fee grant --grantee ${GRANTEE_BUNDLE_ACCOUNT} --allowance 1000000000000000000
+    ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt fee grant --grantee ${GRANTEE_BUNDLE_ACCOUNT} --allowance ${ALLOWANCE}
 }
 
 
