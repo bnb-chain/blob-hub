@@ -33,10 +33,9 @@ const (
 	BundleStatusCreatedOnChain = 2
 	BundleStatusSealedOnChain  = 3 // todo The post verification process should check if a bundle is indeed sealed onchain
 
-	LoopSleepTime              = 10 * time.Millisecond
-	PauseSleepTime             = 5 * time.Second
-	BlockNotFinalizedSleepTime = 1 * time.Minute
-	RPCTimeout                 = 10 * time.Second
+	LoopSleepTime = 10 * time.Millisecond
+	PauseTime     = 90 * time.Second
+	RPCTimeout    = 10 * time.Second
 )
 
 type curBundleDetail struct {
@@ -144,7 +143,7 @@ func (s *BlobSyncer) sync() error {
 		}
 		if nextSlot >= uint64(clBlock.Slot) {
 			logging.Logger.Debugf("the next slot %d is larger than current block slot %d\n", nextSlot, clBlock.Slot)
-			time.Sleep(PauseSleepTime)
+			time.Sleep(PauseTime)
 			return nil
 		}
 		isForkedBlock = true
@@ -152,7 +151,7 @@ func (s *BlobSyncer) sync() error {
 
 	if block != nil && !block.Finalized {
 		logging.Logger.Infof("current block(slot=%d) is not finalized yet", nextSlot)
-		time.Sleep(BlockNotFinalizedSleepTime)
+		time.Sleep(PauseTime)
 		return nil
 	}
 

@@ -51,8 +51,8 @@ func (s *SyncerConfig) Validate() {
 	if len(s.PrivateKey) == 0 {
 		panic("private key is not provided")
 	}
-	if s.CreateBundleSlotInterval > 10 {
-		panic("create_bundle_slot_interval is supposed less than 10")
+	if s.CreateBundleSlotInterval > 30 {
+		panic("create_bundle_slot_interval is supposed less than 20")
 	}
 	s.DBConfig.Validate()
 }

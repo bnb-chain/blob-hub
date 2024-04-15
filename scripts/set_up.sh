@@ -9,7 +9,7 @@ function prepare() {
     cd ${WORKSPACE}
     git clone https://github.com/bnb-chain/greenfield-cmd.git
     cd greenfield-cmd
-    git checkout ${GREENFIELD_CMD_TAG}
+    git checkout master
     make build
     cd build
 

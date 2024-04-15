@@ -2,8 +2,10 @@
 
 ## Overview
 
-The Blob-Syncer is the service sitting between Greenfield and Ethereum, it constantly fetches blobs from Ethereum, blobs from a range of slots will be assembled into a bundle and
-uploaded to the [Bundle Service](https://docs.bnbchain.org/greenfield-docs/docs/api/bundle-service/), finally persisted into Greenfield for permanent archiving. The blob-syncer service also provides APIs for users to query historical blobs.
+The Blob-Syncer service acts as an intermediary between Greenfield and Ethereum, continuously retrieving blobs from Ethereum.
+These blobs, collected from a specific Beacon slot range, are consolidated into a bundle and transmitted to the [Bundle Service](https://docs.bnbchain.org/greenfield-docs/docs/api/bundle-service/)
+for further processing. Subsequently, the bundle is stored in Greenfield for long-term archival purposes. Additionally,
+the Blob-Syncer service offers APIs that enable users to access and retrieve historical blobs as needed.
 
 ## Disclaimer
 **The software and related documentation are under active development, all subject to potential future change without
@@ -11,8 +13,8 @@ notification and not ready for production use. The code and security audit have 
 for any bug bounty. We advise you to be careful and experiment on the network at your own risk. Stay safe out there.**
 
 ## Components
-- blob-syncer: the syncer is designed to sync blobs and store them into Greenfield; there is also a post-verification routine conducted to verify blob storage integrity.
-- blob-syncer-server: the API server to serve users' query request for Blob.
+- blob-syncer: This component is specifically engineered to synchronize blobs and securely store them in Greenfield. It includes a post-verification process to ensure the integrity of blob storage.
+- blob-syncer-server: This component functions as the API server, catering to users' requests for querying blobs.
 
 ## Requirement
 
@@ -20,12 +22,13 @@ Go version above 1.20
 
 ## Prerequisite
 
-1. Create a Bucket on Greenfield
+### Create a bucket on Greenfield
 
-if you don't have a bucket yet, set up one for blob storage. There are a few ways to create it, below shows an example via [greenfield-go-sdk](https://github.com/bnb-chain/greenfield-go-sdk):
+if you don't have a bucket yet, set up one for blob storage. There are a few ways to create one, below shows examples via [greenfield-go-sdk](https://github.com/bnb-chain/greenfield-go-sdk)
+and using provided script.
 
+#### use go-sdk
 ```go
-
   account, err := types.NewAccountFromPrivateKey("test", privateKey)
 	if err != nil {
 		log.Fatalf("New account from private key error, %v", err)
@@ -55,13 +58,14 @@ if you don't have a bucket yet, set up one for blob storage. There are a few way
 	log.Println("bucket info:", bucketInfo.String())
 ```
 
-or you can use the script provided, before runinng it, modify the the scripts/.env file(the GRANTEE_BUNDLE_ACCOUNT does not need to modified at this moment):
+#### use provided script
+you can use the script, before runinng it, modify the the scripts/.env file(the GRANTEE_BUNDLE_ACCOUNT does not need to modified at this moment):
 
 ```shell
 bash scripts/set_up.sh --create_bucket
 ```
 
-2. Get a Bundler Account
+### Get a Bundler Account
 
 Request a bundle account from the Bundle Service, you need to grant the bundle account permission in next step, so that bundle service
 can create object behave of your account.
@@ -72,9 +76,10 @@ curl -X POST  https://gnfd-testnet-bundle.nodereal.io/v1/bundlerAccount/0xf74d88
 {"address":"0x4605BFc98E0a5EA63D9D5a4a1Df549732a6963f3"}
 ```
 
-3. Grant fee and permission to the bundle address for creating bundled objects under the bucket
+### Grant fee and permission to the bundle address for creating bundled objects under the bucket
 
-grant permission
+
+#### use go-sdk
 
 ```go
   bucketActions := []permTypes.ActionType{permTypes.ACTION_CREATE_OBJECT}
@@ -92,7 +97,9 @@ grant permission
 }
 ```
 
-grant allowance
+grant allowance,
+
+the example shows allowance amount of 1 BNB, considered each object creation gas consumed is 0.000006 BNB, it is approximately for 1666667 objects.
 
 ```go
   allowanceAmount := math.NewIntWithDecimal(1, 19)
@@ -105,7 +112,7 @@ grant allowance
 
 You can find similar example [permission](https://github.com/bnb-chain/greenfield-go-sdk/blob/master/examples/permission.go):
 
-
+#### use provided sript
 or you can use the script, replace `GRANTEE_BUNDLE_ACCOUNT` with the addr got from Bundle Service in step 2, and modify the `ALLOWANCE` to your expect amount, so that transacion
 gas will be paid your account:
 

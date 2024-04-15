@@ -50,4 +50,4 @@ USER ${USER_UID}:${USER_GID}
 VOLUME [ $BLOB_SYNCER_SERVER_HOME ]
 
 # Run the app
-CMD /app/blob-syncer-server --config-path "$CONFIG_FILE_PATH"
+CMD /app/blob-syncer-server --config-path "$CONFIG_FILE_PATH" --port 8080

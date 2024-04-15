@@ -32,7 +32,7 @@ func (s *BlobSyncer) verify() error {
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			logging.Logger.Debugf("found no unverified block in DB")
-			time.Sleep(PauseSleepTime)
+			time.Sleep(PauseTime)
 			return nil
 		}
 		return err
@@ -86,7 +86,7 @@ func (s *BlobSyncer) verify() error {
 
 	if bundle.Status == db.Finalizing {
 		logging.Logger.Debugf("the bundle has not been submitted to bundle service yet, bundleName=%s", bundleName)
-		time.Sleep(PauseSleepTime)
+		time.Sleep(PauseTime)
 		return nil
 	}
 
