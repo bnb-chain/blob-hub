@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/bnb-chain/blob-syncer/metrics"
 	"os"
 
 	"github.com/spf13/pflag"
@@ -33,6 +34,7 @@ func main() {
 	if configFilePath == "" {
 		configFilePath = os.Getenv(config.EnvVarConfigFilePath)
 	}
+	configFilePath = "config/local/config-syncer.json"
 	cfg = config.ParseSyncerConfigFromFile(configFilePath)
 	if cfg == nil {
 		panic("failed to get configuration")
@@ -43,5 +45,14 @@ func main() {
 	blobDB := syncerdb.NewBlobSvcDB(db)
 	bs := syncer.NewBlobSyncer(blobDB, cfg)
 	go bs.StartLoop()
+
+	if cfg.MetricsConfig.Enable {
+		if cfg.MetricsConfig.HttpAddress == "" {
+			cfg.MetricsConfig.HttpAddress = metrics.DefaultMetricsAddress
+		}
+		metric := metrics.NewMetrics(cfg.MetricsConfig.HttpAddress)
+		go metric.Start()
+	}
+
 	select {}
 }

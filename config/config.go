@@ -16,16 +16,17 @@ import (
 )
 
 type SyncerConfig struct {
-	BucketName               string    `json:"bucket_name"`                 // BucketName is the identifier of bucket on Greenfield that store blob
-	StartSlot                uint64    `json:"start_slot"`                  // StartSlot is used to init the syncer which slot of beacon chain to synced from, only need to provide once.
-	CreateBundleSlotInterval uint64    `json:"create_bundle_slot_interval"` // CreateBundleSlotInterval defines the number of slot that syncer would assemble blobs and upload to bundle service
-	BundleServiceEndpoints   []string  `json:"bundle_service_endpoints"`    // BundleServiceEndpoints is a list of bundle service address
-	BeaconRPCAddrs           []string  `json:"beacon_rpc_addrs"`            // BeaconRPCAddrs is a list of beacon chain RPC address
-	ETHRPCAddrs              []string  `json:"eth_rpc_addrs"`
-	TempDir                  string    `json:"temp_dir"`    // TempDir is used to store blobs and created bundle
-	PrivateKey               string    `json:"private_key"` // PrivateKey is the key of bucket owner, request to bundle service will be signed by it as well.
-	DBConfig                 DBConfig  `json:"db_config"`
-	LogConfig                LogConfig `json:"log_config"`
+	BucketName               string        `json:"bucket_name"`                 // BucketName is the identifier of bucket on Greenfield that store blob
+	StartSlot                uint64        `json:"start_slot"`                  // StartSlot is used to init the syncer which slot of beacon chain to synced from, only need to provide once.
+	CreateBundleSlotInterval uint64        `json:"create_bundle_slot_interval"` // CreateBundleSlotInterval defines the number of slot that syncer would assemble blobs and upload to bundle service
+	BundleServiceEndpoints   []string      `json:"bundle_service_endpoints"`    // BundleServiceEndpoints is a list of bundle service address
+	BeaconRPCAddrs           []string      `json:"beacon_rpc_addrs"`            // BeaconRPCAddrs is a list of beacon chain RPC address
+	ETHRPCAddrs              []string      `json:"eth_rpc_addrs"`
+	TempDir                  string        `json:"temp_dir"`    // TempDir is used to store blobs and created bundle
+	PrivateKey               string        `json:"private_key"` // PrivateKey is the key of bucket owner, request to bundle service will be signed by it as well.
+	DBConfig                 DBConfig      `json:"db_config"`
+	MetricsConfig            MetricsConfig `json:"metrics_config"`
+	LogConfig                LogConfig     `json:"log_config"`
 }
 
 func (s *SyncerConfig) Validate() {
@@ -112,6 +113,11 @@ func (cfg *DBConfig) Validate() {
 	if cfg.MaxIdleConns == 0 || cfg.MaxOpenConns == 0 {
 		panic("db connections is not correct")
 	}
+}
+
+type MetricsConfig struct {
+	Enable      bool   `json:"enable"`
+	HttpAddress string `json:"http_address"`
 }
 
 type LogConfig struct {

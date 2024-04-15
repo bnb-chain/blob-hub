@@ -1,13 +1,123 @@
-# Blob syncer
+# Blob Syncer
+
+## Disclaimer
+**The software and related documentation are under active development, all subject to potential future change without
+notification and not ready for production use. The code and security audit have not been fully completed and not ready
+for any bug bounty. We advise you to be careful and experiment on the network at your own risk. Stay safe out there.**
 
 ## Overview
 
-The blob-syncer is the service sitting between Greenfield and Ethereum, constantly fetching blobs from Ethereum and persisting 
+The Blob-Syncer is the service sitting between Greenfield and Ethereum, constantly fetching blobs from Ethereum and persisting
 them into Greenfield storage for permanent archiving. The blob-syncer service also provides APIs for users to query historical blobs.
 
 ## Components
-- blob-syncer: the syncer is designed to sync blobs and store into Greenfield.
-- blob-syncer-server: the server is to serve user query request for Blob.
+- blob-syncer: the syncer is designed to sync blobs and store them onto Greenfield; there is also a post-verification routine conducted to verify blob storage integrity.
+- blob-syncer-server: the API server to serve users' query request for Blob.
+
+You might want to run 1 instance of syncer, while multiple servers can be run to fulfill requests.
+
+## Requirement
+
+Go version above 1.20
+
+## Prerequisite
+
+1. Create a Bucket on Greenfield
+
+if you don't have a bucket yet, set up one for blob storage. There are a few ways to create it, below shows an example via [greenfield-go-sdk](https://github.com/bnb-chain/greenfield-go-sdk):
+
+```go
+
+  account, err := types.NewAccountFromPrivateKey("test", privateKey)
+	if err != nil {
+		log.Fatalf("New account from private key error, %v", err)
+	}
+	cli, err := client.New("greenfield_5600-1", "https://gnfd-testnet-fullnode-tendermint-us.bnbchain.org:443", client.Option{DefaultAccount: account})
+	if err != nil {
+		log.Fatalf("unable to new greenfield client, %v", err)
+	}
+	ctx := context.Background()
+
+	// get storage providers list
+	spLists, err := cli.ListStorageProviders(ctx, true)
+	if err != nil {
+		log.Fatalf("fail to list in service sps")
+	}
+	// choose the first sp to be the primary SP
+	primarySP := spLists[0].GetOperatorAddress()
+
+	// create bucket
+	_, err = cli.CreateBucket(ctx, bucketName, primarySP, types.CreateBucketOptions{})
+	handleErr(err, "CreateBucket")
+	log.Printf("create bucket %s on SP: %s successfully \n", bucketName, spLists[0].Endpoint)
+
+	// head bucket
+	bucketInfo, err := cli.HeadBucket(ctx, bucketName)
+	handleErr(err, "HeadBucket")
+	log.Println("bucket info:", bucketInfo.String())
+```
+
+or you can use the script provided, before runinng it, modify the the scripts/.env file(the GRANTEE_BUNDLE_ACCOUNT does not need to modified at this moment), and then execute:
+
+```shell
+bash scripts/set_up.sh --create_bucket
+```
+
+2. Get a Bundler Account
+
+Request a bundle account from the Bundle Service, you need to grant such account in next step, so that bundle service
+can create object behave of you.
+
+```shell
+curl -X POST  https://gnfd-testnet-bundle.nodereal.io/v1/bundlerAccount/0xf74d8897D8BeafDF4b766E19A62078DE84570656
+
+{"address":"0x4605BFc98E0a5EA63D9D5a4a1Df549732a6963f3"}
+```
+
+
+3. Grant fee and permission to the bundle address for creating bundled objects under the bucket
+
+grant permission
+
+```go
+  bucketActions := []permTypes.ActionType{permTypes.ACTION_CREATE_OBJECT}
+  statements := utils.NewStatement(bucketActions, permTypes.EFFECT_ALLOW, nil, sdktypes.NewStatementOptions{})
+  bundleAgentPrincipal, err := utils.NewPrincipalWithAccount(sdk.MustAccAddressFromHex(bundleAddrToGrant))
+  if err != nil {
+  util.Logger.Fatalf("NewPrincipalWithAccount: %v", err)
+  return
+}
+
+  _, err = cli.PutBucketPolicy(ctx, BlobBucketName, BundleAgentPrincipal, []*permTypes.Statement{&statements}, sdktypes.PutPolicyOption{})
+  if err != nil {
+  util.Logger.Fatalf("put policy failed: %v", err)
+  return
+}
+```
+
+grant allowance
+
+```go
+  allowanceAmount := math.NewIntWithDecimal(1, 19)
+  _, err = cli.GrantBasicAllowance(ctx, bundleAcct.String(), allowanceAmount, nil, gnfdsdktypes.TxOption{})
+  if err != nil {
+  util.Logger.Fatalf("grant fee allowance failed: %v", err)
+  }
+
+```
+
+You can find similar example [permission](https://github.com/bnb-chain/greenfield-go-sdk/blob/master/examples/permission.go):
+
+
+or you can use the script and execute, replace GRANTEE_BUNDLE_ACCOUNT with the addr got from step 2:
+
+```shell
+bash scripts/set_up.sh --grant
+```
+
+
+After above steps are done, you can start running the Blob Syncer Service.
+
 
 ## Build
 
@@ -31,10 +141,51 @@ make build_server
 
 ## Run
 
-### Run blob syncer instance
+### Run the Blob Syncer instance
 
 ```shell
 ./build/blob-syncer --config-path config/local/config-syncer.json
+```
+
+```json
+{
+  "bucket_name": "your-bucket",
+  "start_slot": 8783000,
+  "create_bundle_slot_interval": 5,
+  "beacon_rpc_addrs": [
+  "https://eth2-beacon-mainnet.nodereal.io"
+  ],
+  "bundle_service_endpoints": [
+  "https://gnfd-testnet-bundle.nodereal.io"
+  ],
+  "eth_rpc_addrs": [
+  "https://eth-mainnet.nodereal.io"
+  ],
+  "temp_dir": "temp",
+  "private_key": "0x....",
+  "db_config": {
+    "dialect": "mysql",
+    "username": "root",
+    "password": "pass",
+    "url": "/blob-syncer?charset=utf8&parseTime=True&loc=Local",
+    "max_idle_conns": 10,
+    "max_open_conns": 100
+  },
+  "metrics_config": {
+    "enable": true,
+    "http_address": ""
+  },
+  "log_config": {
+    "level": "DEBUG",
+    "filename": "",
+    "max_file_size_in_mb": 0,
+    "max_backups_of_log_files": 0,
+    "max_age_to_retain_log_files_in_days": 0,
+    "use_console_logger": true,
+    "use_file_logger": false,
+    "compress": false
+  }
+}
 ```
 
 ### Run the api server
@@ -53,9 +204,9 @@ The Blob syncer server provides eth compatible API to query historical blob
 * GET /eth/v1/beacon/blob_sidecars/{block_id}
 
 | ParameterName | Type            | Description                                                                                                                                                          |
-|--------------|-----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| block_id     | string          | Block identifier. Can be one of: slot,  <hex encoded blockRoot with 0x prefix>. note: "head" (canonical head in node's view), "genesis", "finalized" are not support |
-| indices         | array of string | Array of indices for blob sidecars to request for in the specified block. Returns all blob sidecars in the block if not specified                                    |
+| ------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| block_id      | string          | Block identifier. Can be one of: slot,  <hex encoded blockRoot with 0x prefix>. note: "head" (canonical head in node's view), "genesis", "finalized" are not support |
+| indices       | array of string | Array of indices for blob sidecars to request for in the specified block. Returns all blob sidecars in the block if not specified                                    |
 
 
 200: Ok response
@@ -64,14 +215,14 @@ The Blob syncer server provides eth compatible API to query historical blob
 {
   "data": [
     {
-      "index": "1",
-      "blob": "0x0006eac4e2fac2ca844810be0dc9e398fa4961656c022b65e4af13728152980a00ed0800010017da0001003eff00010039d6000100bedd0001004ffb0001000000e600010022e000010004e5000000014df70a66ff064061f10bff8211f2ff8000c0040e8301a7f7941096..",
-      "kzg_commitment": "0xb94c3ea2014aa34424b0e619ae91cb2c7299f219160c0702e7c0c66f063b7d368e1d881dd35f8b53ae00490abc455c64",
-      "kzg_proof": "0xb542bb5619c8609c260133c0b0fb90e889aa2080d44ea842de26de30280acbbdf4c197a4f3620575cb6fa3ff614fec2e",
-      "commitmentInclusionProof": [
-        "0xeb4561cc212f3ff20b46b842abe512ef4fe80e4f7ba19a157e990973317e576d",
-        "0xdd5a6c8cfbc72ee48dc5d5b8d912d09bd70de2ec11ae0a57d9a2e8531d9d561c",
-        "0xc59bf2f2ec6443c468fc918dd7ddec3b588a899ee8b165866cf43898311b18fa",
+      "index": "0",
+      "blob": "0x00b900026b636f6e74656e745479706569696d6167652f706e6767636f6e7465006e745a0001c8aa1f8b0800000000000003c497e55714dc17ef67e8ee6e8691009666405a1c4a40a4bb4b4a40ba41a41ba44b910649e998a11ba4bbbb4b...",
+      "kzg_commitment": "0x8f5b5ac395257c71080721a72dfbc2a4260184a9fe6442d53ab17cd3c7246cfc263fbad5f063456bcfefea2c2795378a",
+      "kzg_proof": "0x9952be38421793ca564e3cb779e14345912184bd883b8532629c23e948ba5c29103ddd072d1fbbb5e521a9bee3ee7925",
+      "kzg_commitment_inclusion_proof": [
+        "0x82ba896ae27ae4d01108146fa4a8313522b966697b088ec0e8f1e53f56c83626",
+        "0x256135c2cf896b0790ab66a3a9b5cbbe5971968cbc72fc151063e92f500440a2",
+        "0x93de7d5c33984c7e6c91d486aa097662517e933655c2155c0857a05e43074da5",
         "0xc78009fdf07fc56a11f122370658a353aaa542ed63e44c4bc15ff4cd105ab33c",
         "0x536d98837f2dd165a55d5eeae91485954472d56f246df256bf3cae19352a123c",
         "0x9efde052aa15429fae05bad4d0b1d7c64da64d03d7a1854a588c2cb8430c0d30",
@@ -83,20 +234,21 @@ The Blob syncer server provides eth compatible API to query historical blob
         "0x6cf04127db05441cd833107a52be852868890e4317e6a02ab47683aa75964220",
         "0x0600000000000000000000000000000000000000000000000000000000000000",
         "0x792930bbd5baac43bcc798ee49aa8185ef76bb3b44ba62b91d86ae569e4bb535",
-        "0x810ee2cb21cca3e51a02375a8008f1aacd0a26920b83fdc1f822b09535fe7364",
+        "0x16c5286816e0c2fe95421dc404efb8919aa762db0a15e852933a2ad965aa9ed5",
         "0xdb56114e00fdd4c1f85c892bf35ac9a89289aaecb1ebd0a96cde606a748b5d71",
-        "0x1047617013a89e7f8d63f77c0c8d18d823e9d27770697cf4aedf85bd381c25f5"
-      ],
-      "signedBeaconBlockHeader": {
+        "0xd5be0ed2682550ce71db46a6d05873d67bbb855b43a9e017eb76afe317cf7e7d"
+        ],
+      "signed_block_header": {
         "message": {
-          "bodyRoot": "5d07afb7c733c581dde806d3f28558db1a5fb8e79aaea551e5bc256da31dbd68",
-          "parentRoot": "0feeeb3c6690b376c58d1aa9bf5ef756617969eaeec6862331cb740c1e4c69b4",
-          "proposerIndex": "805060",
-          "slot": "8777509",
-          "stateRoot": "47b2a6ee35da2c4605d4d184b3cac2b961e67dc8763bf27085ac337c1d4018f2"
+          "body_root": "0xfeffb7e2e57b5dac8849ce45723c701033053788dd8615fd8e2ad68689ea2cbf",
+          "parent_root": "0xd39e1b7b8c5c2226d80a071cf919744679b22d95ce241210e6dee5dd76317dce",
+          "proposer_index": "452467",
+          "slot": "8783262",
+          "state_root": "0xf014944ead7b1524d3b3d3e76c0285e20ffb277f3778c5f6be63c487904204cf"
         }
       }
-    }
+    },
+    ....
   ]
 } 
 ```

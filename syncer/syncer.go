@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/bnb-chain/blob-syncer/metrics"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -31,6 +32,11 @@ const (
 	BundleStatusFinalized      = 1
 	BundleStatusCreatedOnChain = 2
 	BundleStatusSealedOnChain  = 3 // todo The post verification process should check if a bundle is indeed sealed onchain
+
+	LoopSleepTime              = 10 * time.Millisecond
+	PauseSleepTime             = 5 * time.Second
+	BlockNotFinalizedSleepTime = 1 * time.Minute
+	RPCTimeout                 = 10 * time.Second
 )
 
 type curBundleDetail struct {
@@ -70,17 +76,35 @@ func NewBlobSyncer(
 
 func (s *BlobSyncer) StartLoop() {
 	go func() {
-		for {
-			if err := s.process(); err != nil {
+		nextSlot, err := s.calNextSlot()
+		if err != nil {
+			panic(err)
+		}
+		err = s.LoadProgressAndResume(nextSlot)
+		if err != nil {
+			panic(err)
+		}
+		syncTicker := time.NewTicker(LoopSleepTime)
+		for range syncTicker.C {
+			if err = s.sync(); err != nil {
 				logging.Logger.Error(err)
 				continue
 			}
 		}
 	}()
-
 	go func() {
-		for {
-			if err := s.verify(); err != nil {
+		nextSlot, err := s.calNextSlot()
+		if err != nil {
+			panic(err)
+		}
+		err = s.LoadProgressAndResume(nextSlot)
+		if err != nil {
+			panic(err)
+		}
+		verifyTicket := time.NewTicker(LoopSleepTime)
+
+		for range verifyTicket.C {
+			if err = s.verify(); err != nil {
 				logging.Logger.Error(err)
 				continue
 			}
@@ -88,53 +112,54 @@ func (s *BlobSyncer) StartLoop() {
 	}()
 }
 
-func (s *BlobSyncer) process() error {
-	ctx := context.Background()
-	nextSlot, err := s.calNextSlot()
+func (s *BlobSyncer) sync() error {
+	var (
+		nextSlot               uint64
+		err                    error
+		block, latestBlockResp *structs.GetBlockV2Response
+	)
+	nextSlot, err = s.calNextSlot()
 	if err != nil {
 		return err
 	}
-
-	// the app is just re-started.
-	if s.bundleDetail == nil {
-		// get latest bundle from DB or bundle service(if DB data is lost)
-		err := s.LoadProgressAndResume(nextSlot)
-		if err != nil {
-			return fmt.Errorf("failed to LoadProgressAndResume, err=%s", err.Error())
-		}
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), RPCTimeout)
+	defer cancel()
 	var isForkedBlock bool
-	block, err := s.ethClients.BeaconClient.GetBlock(ctx, nextSlot)
+	block, err = s.ethClients.BeaconClient.GetBlock(ctx, nextSlot)
 	if err != nil {
 		if err != external.ErrBlockNotFound {
 			return err
 		}
 		// Both try to get forked block and non-exist block will return 404. When the response is ErrBlockNotFound,
 		// check whether nextSlot is >= latest slot, otherwise it is a forked block, should skip it.
-		blockResp, err := s.ethClients.BeaconClient.GetLatestBlock(ctx)
+		latestBlockResp, err = s.ethClients.BeaconClient.GetLatestBlock(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to get latest becon block, err=%s", err.Error())
+			logging.Logger.Errorf("failed to get latest becon block, err=%s", err.Error())
+			return err
 		}
-		clBlock, _, err := ToBlockAndExecutionPayloadDeneb(blockResp)
+		clBlock, _, err := ToBlockAndExecutionPayloadDeneb(latestBlockResp)
 		if err != nil {
-			return fmt.Errorf("failed to ToBlockAndExecutionPayloadDeneb, err=%s", err.Error())
+			logging.Logger.Errorf("failed to ToBlockAndExecutionPayloadDeneb, err=%s", err.Error())
+			return err
 		}
 		if nextSlot >= uint64(clBlock.Slot) {
-			logging.Logger.Debugf("the nextSlot %d is larger than current block slot %d\n", nextSlot, clBlock.Slot)
+			logging.Logger.Debugf("the next slot %d is larger than current block slot %d\n", nextSlot, clBlock.Slot)
+			time.Sleep(PauseSleepTime)
 			return nil
-		} else {
-			isForkedBlock = true
 		}
+		isForkedBlock = true
 	}
 
-	if !isForkedBlock && !block.Finalized {
-		logging.Logger.Infof("current block(h=%d) is not finalized yet", nextSlot)
-		time.Sleep(1 * time.Minute) // around 15 minutes to finalize
+	if block != nil && !block.Finalized {
+		logging.Logger.Infof("current block(slot=%d) is not finalized yet", nextSlot)
+		time.Sleep(BlockNotFinalizedSleepTime)
 		return nil
 	}
 
 	var sideCars []*structs.Sidecar
 	if !isForkedBlock {
+		ctx, cancel = context.WithTimeout(context.Background(), RPCTimeout)
+		defer cancel()
 		sideCars, err = s.ethClients.BeaconClient.GetBlob(ctx, nextSlot)
 		if err != nil {
 			return err
@@ -142,7 +167,7 @@ func (s *BlobSyncer) process() error {
 	}
 
 	bundleName := s.bundleDetail.name
-	// create a new bundle
+	// create a new bundle in local.
 	if nextSlot == s.bundleDetail.startSlot {
 		if err = s.createLocalBundleDir(); err != nil {
 			logging.Logger.Errorf("failed to create local bundle dir, bundle=%s, err=%s", bundleName, err.Error())
@@ -152,14 +177,12 @@ func (s *BlobSyncer) process() error {
 	if err = s.writeBlobToFile(nextSlot, bundleName, sideCars); err != nil {
 		return err
 	}
-
 	if nextSlot == s.bundleDetail.finalizeSlot {
 		err = s.finalizeCurBundle(bundleName)
 		if err != nil {
 			return err
 		}
 		logging.Logger.Infof("finalized bundle, bundle_name=%s, bucket_name=%s\n", bundleName, s.getBucketName())
-
 		// init next bundle
 		startSlot := nextSlot + 1
 		endSlot := nextSlot + s.getCreateBundleSlotInterval()
@@ -172,7 +195,8 @@ func (s *BlobSyncer) process() error {
 
 	if isForkedBlock {
 		return s.blobDao.SaveBlockAndBlob(&db.Block{
-			Slot: nextSlot,
+			Slot:       nextSlot,
+			BundleName: bundleName,
 		}, nil)
 	}
 
@@ -185,6 +209,7 @@ func (s *BlobSyncer) process() error {
 		logging.Logger.Errorf("failed to save block(h=%d) and Blob(count=%d), err=%s", blockToSave.Slot, len(blobToSave), err.Error())
 		return err
 	}
+	metrics.SyncedSlotGauge.Set(float64(nextSlot))
 	logging.Logger.Infof("saved block(slot=%d) and blobs(num=%d) to DB \n", nextSlot, len(blobToSave))
 	return nil
 }
@@ -330,7 +355,9 @@ func (s *BlobSyncer) ToBlockAndBlobs(blockResp *structs.GetBlockV2Response, blob
 		if err != nil {
 			return nil, nil, err
 		}
-		header, err := s.ethClients.BeaconClient.GetHeader(context.Background(), slot)
+		ctx, cancel := context.WithTimeout(context.Background(), RPCTimeout)
+		defer cancel()
+		header, err := s.ethClients.BeaconClient.GetHeader(ctx, slot)
 		if err != nil {
 			logging.Logger.Errorf("failed to get header, err=%s", header.Data.Root, err.Error())
 			return nil, nil, err
@@ -340,15 +367,23 @@ func (s *BlobSyncer) ToBlockAndBlobs(blockResp *structs.GetBlockV2Response, blob
 			logging.Logger.Errorf("failed to decode header.Data.Root=%s, err=%s", header.Data.Root, err.Error())
 			return nil, nil, err
 		}
+		sigBz, err := hexutil.Decode(header.Data.Header.Signature)
+		if err != nil {
+			logging.Logger.Errorf("failed to decode header.Data.Header.Signature=%s, err=%s", header.Data.Header.Signature, err.Error())
+			return nil, nil, err
+		}
+
 		blockReturn = &db.Block{
 			Root:          hex.EncodeToString(rootBz), // get rid of 0x saved to DB
 			ParentRoot:    hex.EncodeToString(clBlock.GetParentRoot()),
 			StateRoot:     hex.EncodeToString(clBlock.GetStateRoot()),
 			BodyRoot:      hex.EncodeToString(bodyRoot[:]),
+			Signature:     hex.EncodeToString(sigBz[:]),
 			ProposerIndex: uint64(clBlock.ProposerIndex),
 			Slot:          uint64(clBlock.GetSlot()),
 			ELBlockHeight: executionPayload.GetBlockNumber(),
 			BlobCount:     len(blobs),
+			BundleName:    bundleName,
 		}
 	default:
 		return nil, nil, fmt.Errorf("un-expected block version %s", blockResp.Version)
@@ -367,7 +402,6 @@ func (s *BlobSyncer) ToBlockAndBlobs(blockResp *structs.GetBlockV2Response, blob
 			Name:                     types.GetBlobName(slot, index),
 			Slot:                     slot,
 			Idx:                      index,
-			BundleName:               bundleName,
 			KzgProof:                 blob.KzgProof,
 			KzgCommitment:            blob.KzgCommitment,
 			CommitmentInclusionProof: util.JoinWithComma(blob.CommitmentInclusionProof),
@@ -375,9 +409,11 @@ func (s *BlobSyncer) ToBlockAndBlobs(blockResp *structs.GetBlockV2Response, blob
 		blobsReturn = append(blobsReturn, b)
 	}
 
-	elBlock, err := s.ethClients.Eth1Client.BlockByNumber(context.Background(), big.NewInt(int64(executionPayload.GetBlockNumber())))
+	ctx, cancel := context.WithTimeout(context.Background(), RPCTimeout)
+	defer cancel()
+	elBlock, err := s.ethClients.Eth1Client.BlockByNumber(ctx, big.NewInt(int64(executionPayload.GetBlockNumber())))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get block at slot %d, err=%s", executionPayload.GetBlockNumber(), err.Error())
+		return nil, nil, fmt.Errorf("failed to get block at height %d, err=%s", executionPayload.GetBlockNumber(), err.Error())
 	}
 	blobIndex := 0
 	for _, tx := range elBlock.Body().Transactions {
@@ -390,6 +426,5 @@ func (s *BlobSyncer) ToBlockAndBlobs(blockResp *structs.GetBlockV2Response, blob
 			}
 		}
 	}
-
 	return blockReturn, blobsReturn, nil
 }

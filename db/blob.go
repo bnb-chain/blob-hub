@@ -11,7 +11,6 @@ type Blob struct {
 	KzgCommitment            string `gorm:"NOT NULL"`
 	KzgProof                 string `gorm:"NOT NULL"`
 	CommitmentInclusionProof string `gorm:"NOT NULL"`
-	BundleName               string `gorm:"NOT NULL"`
 }
 
 func (*Blob) TableName() string {

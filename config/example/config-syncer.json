@@ -1,0 +1,38 @@
+{
+  "bucket_name": "yourbucketname",
+  "start_slot": 8860704,
+  "create_bundle_slot_interval": 10,
+  "beacon_rpc_addrs": [
+    "https://eth2-beacon-mainnet.nodereal.io"
+  ],
+  "bundle_service_endpoints": [
+    "https://gnfd-testnet-bundle.nodereal.io"
+  ],
+  "eth_rpc_addrs": [
+    "https://eth-mainnet.nodereal.io"
+  ],
+  "temp_dir": "temp",
+  "private_key": "0x...",
+  "db_config": {
+    "dialect": "mysql",
+    "username": "root",
+    "password": "pass",
+    "url": "/local-blob-syncer?charset=utf8&parseTime=True&loc=Local",
+    "max_idle_conns": 10,
+    "max_open_conns": 100
+  },
+  "metrics_config": {
+    "enable": true,
+    "http_address": ""
+  },
+  "log_config": {
+    "level": "DEBUG",
+    "filename": "",
+    "max_file_size_in_mb": 0,
+    "max_backups_of_log_files": 0,
+    "max_age_to_retain_log_files_in_days": 0,
+    "use_console_logger": true,
+    "use_file_logger": false,
+    "compress": false
+  }
+}

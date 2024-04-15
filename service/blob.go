@@ -2,8 +2,6 @@ package service
 
 import (
 	"fmt"
-	"strconv"
-
 	"github.com/bnb-chain/blob-syncer/cache"
 	"github.com/bnb-chain/blob-syncer/config"
 	"github.com/bnb-chain/blob-syncer/db"
@@ -11,6 +9,8 @@ import (
 	"github.com/bnb-chain/blob-syncer/models"
 	"github.com/bnb-chain/blob-syncer/util"
 )
+
+const prefixHex = "0x"
 
 type Blob interface {
 	GetBlobSidecarsByRoot(root string, indices []int64) ([]*models.Sidecar, error)
@@ -35,7 +35,7 @@ func NewBlobService(blobDB db.BlobDao, bundleClient *external.BundleClient, cach
 
 func (b BlobService) GetBlobSidecarsBySlot(slot uint64, indices []int64) ([]*models.Sidecar, error) {
 	var err error
-	blobs, found := b.cacheService.Get(strconv.FormatUint(slot, 10))
+	blobs, found := b.cacheService.Get(util.Uint64ToString(slot))
 	if found {
 		blobsFound := blobs.([]*models.Sidecar)
 		if len(indices) != 0 {
@@ -71,23 +71,24 @@ func (b BlobService) GetBlobSidecarsBySlot(slot uint64, indices []int64) ([]*mod
 
 	sideCars := make([]*models.Sidecar, 0)
 	for _, meta := range blobMetas {
-		bundleObject, err := b.bundleClient.GetObject(b.config.BucketName, meta.BundleName, meta.Name)
+		bundleObject, err := b.bundleClient.GetObject(b.config.BucketName, block.BundleName, meta.Name)
 		if err != nil {
 			return nil, err
 		}
 		header := &models.SidecarSignedBlockHeader{
 			Message: &models.SidecarSignedBlockHeaderMessage{
-				BodyRoot:      block.BodyRoot,
-				ParentRoot:    block.ParentRoot,
-				ProposerIndex: strconv.FormatUint(block.ProposerIndex, 10),
-				Slot:          strconv.FormatUint(block.Slot, 10),
-				StateRoot:     block.StateRoot,
+				BodyRoot:      fmt.Sprintf("%s%s", prefixHex, block.BodyRoot),
+				ParentRoot:    fmt.Sprintf("%s%s", prefixHex, block.ParentRoot),
+				StateRoot:     fmt.Sprintf("%s%s", prefixHex, block.StateRoot),
+				ProposerIndex: util.Uint64ToString(block.ProposerIndex),
+				Slot:          util.Uint64ToString(block.Slot),
 			},
+			Signature: fmt.Sprintf("%s%s", prefixHex, block.Signature),
 		}
 		sideCars = append(sideCars,
 			&models.Sidecar{
 				Blob:                        bundleObject,
-				Index:                       strconv.FormatInt(int64(meta.Idx), 10),
+				Index:                       util.Int64ToString(int64(meta.Idx)),
 				KzgCommitmentInclusionProof: util.SplitByComma(meta.CommitmentInclusionProof),
 				KzgCommitment:               meta.KzgCommitment,
 				KzgProof:                    meta.KzgProof,
@@ -97,7 +98,7 @@ func (b BlobService) GetBlobSidecarsBySlot(slot uint64, indices []int64) ([]*mod
 
 	// cache all blobs at a specified slot
 	if len(indices) == 0 {
-		b.cacheService.Set(strconv.FormatUint(slot, 10), sideCars)
+		b.cacheService.Set(util.Uint64ToString(slot), sideCars)
 	}
 	return sideCars, nil
 }

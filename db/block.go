@@ -14,12 +14,13 @@ type Block struct {
 	StateRoot     string
 	BodyRoot      string
 	ProposerIndex uint64
+	Signature     string
 	Slot          uint64 `gorm:"NOT NULL;uniqueIndex:idx_block_slot"`
 	ELBlockHeight uint64 // the eth1 block height
 	BlobCount     int
-	KzgCommitment string
 
-	Status Status
+	BundleName string `gorm:"NOT NULL"`
+	Status     Status
 }
 
 func (*Block) TableName() string {

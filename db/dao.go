@@ -25,8 +25,7 @@ type BlockDB interface {
 	GetBlock(slot uint64) (*Block, error)
 	GetBlockByRoot(root string) (*Block, error)
 	GetLatestProcessedBlock() (*Block, error)
-	GetLatestVerifiedBlock() (*Block, error)
-	GetFirstBlock() (*Block, error)
+	GetEarliestUnverifiedBlock() (*Block, error)
 	UpdateBlockToVerifiedStatus(slot uint64) error
 }
 
@@ -57,19 +56,10 @@ func (d *BlobSvcDB) GetLatestProcessedBlock() (*Block, error) {
 	return &block, nil
 }
 
-func (d *BlobSvcDB) GetLatestVerifiedBlock() (*Block, error) {
+func (d *BlobSvcDB) GetEarliestUnverifiedBlock() (*Block, error) {
 	block := Block{}
-	err := d.db.Model(Block{}).Where("status = ?", Verified).Order("slot desc").Take(&block).Error
-	if err != nil && err != gorm.ErrRecordNotFound {
-		return nil, err
-	}
-	return &block, nil
-}
-
-func (d *BlobSvcDB) GetFirstBlock() (*Block, error) {
-	block := Block{}
-	err := d.db.Model(Block{}).Order("slot asc").Take(&block).Error
-	if err != nil && err != gorm.ErrRecordNotFound {
+	err := d.db.Model(Block{}).Where("status = ?", Processed).Order("slot asc").Take(&block).Error
+	if err != nil {
 		return nil, err
 	}
 	return &block, nil
@@ -104,9 +94,19 @@ func (d *BlobSvcDB) GetBlobBySlotAndIndices(slot uint64, indices []int64) ([]*Bl
 }
 
 type BundleDB interface {
+	GetBundle(name string) (*Bundle, error)
 	GetLatestFinalizingBundle() (*Bundle, error)
 	CreateBundle(*Bundle) error
 	UpdateBundleStatus(bundleName string, status InnerBundleStatus) error
+}
+
+func (d *BlobSvcDB) GetBundle(name string) (*Bundle, error) {
+	bundle := Bundle{}
+	err := d.db.Model(Bundle{}).Where("name = ?", name).Take(&bundle).Error
+	if err != nil {
+		return nil, err
+	}
+	return &bundle, nil
 }
 
 func (d *BlobSvcDB) GetLatestFinalizingBundle() (*Bundle, error) {
