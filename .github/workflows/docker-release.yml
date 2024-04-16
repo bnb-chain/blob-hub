@@ -25,15 +25,13 @@ jobs:
           --label "org.opencontainers.image.source=${IMAGE_SOURCE}" \
           --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" \
           --label "org.opencontainers.image.version=$(git describe --tags --abbrev=0)" \
-          --label "org.opencontainers.image.licenses=AGPL-3.0" \
-          -f ./Dockerfile -t "${IMAGE_NAME}"
+          -f ./server-distroless.dockerfile -t "${IMAGE_NAME}:server-distroless"
 
           docker build . \
           --label "org.opencontainers.image.source=${IMAGE_SOURCE}" \
           --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" \
           --label "org.opencontainers.image.version=$(git describe --tags --abbrev=0)" \
-          --label "org.opencontainers.image.licenses=AGPL-3.0" \
-          -f ./Dockerfile.distroless -t "${IMAGE_NAME}:distroless"
+          -f ./syncer-distroless.dockerfile -t "${IMAGE_NAME}:syncer-distroless"
 
       - name: Login to GHCR
         uses: docker/login-action@v2
@@ -52,10 +50,7 @@ jobs:
           [ "$VERSION" == "master" ] && VERSION=latest
           echo IMAGE_NAME=$IMAGE_NAME
           echo VERSION=$VERSION
-          docker tag $IMAGE_NAME $IMAGE_NAME:$VERSION
-          docker tag $IMAGE_NAME $IMAGE_NAME:latest
-          docker tag ${IMAGE_NAME}:distroless $IMAGE_NAME:$VERSION-distroless
-          docker push $IMAGE_NAME:$VERSION
-          docker push $IMAGE_NAME:latest
-          docker push $IMAGE_NAME:$VERSION-distroless
-          
+          docker tag ${IMAGE_NAME}:server-distroless $IMAGE_NAME:$VERSION-server-distroless
+          docker tag ${IMAGE_NAME}:syncer-distroless $IMAGE_NAME:$VERSION-syncer-distroless
+          docker push $IMAGE_NAME:$VERSION-server-distroless
+          docker push $IMAGE_NAME:$VERSION-syncer-distroless

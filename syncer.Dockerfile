@@ -17,7 +17,7 @@ ARG GH_TOKEN=""
 RUN go env -w GOPRIVATE="github.com/bnb-chain/*"
 RUN git config --global url."https://${GH_TOKEN}@github.com".insteadOf "https://github.com"
 
-RUN make build
+RUN make build_syncer
 
 # Pull binary into a second stage deploy alpine container
 FROM alpine:3.17

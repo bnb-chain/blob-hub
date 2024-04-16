@@ -17,21 +17,16 @@ ARG GH_TOKEN=""
 RUN go env -w GOPRIVATE="github.com/bnb-chain/*"
 RUN git config --global url."https://${GH_TOKEN}@github.com".insteadOf "https://github.com"
 
-RUN make build_server
+RUN make build_syncer
 
-# Pull binary into a second stage deploy alpine container
+
 FROM alpine:3.17
 
 ARG USER=app
 ARG USER_UID=1000
 ARG USER_GID=1000
 
-ENV BLOB_SYNCER_SERVER_HOME /opt/app
-ENV CONFIG_FILE_PATH $BLOB_SYNCER_SERVER_HOME/config/config.json
-ENV DB_USERNAME ""
-ENV DB_PASSWORD ""
-
-ENV PACKAGES ca-certificates libstdc++
+ENV PACKAGES ca-certificates libstdc++ curl
 ENV WORKDIR=/app
 
 RUN apk add --no-cache $PACKAGES \
@@ -42,12 +37,14 @@ RUN apk add --no-cache $PACKAGES \
   && sed -i -e "s/bin\/sh/bin\/bash/" /etc/passwd
 
 WORKDIR ${WORKDIR}
-
-COPY --from=builder /opt/app/build/blob-syncer ${WORKDIR}/
 RUN chown -R ${USER_UID}:${USER_GID} ${WORKDIR}
 USER ${USER_UID}:${USER_GID}
 
-VOLUME [ $BLOB_SYNCER_SERVER_HOME ]
+ENV CONFIG_FILE_PATH /opt/app/config/config.json
+
+ENV WORKDIR=/app
+WORKDIR ${WORKDIR}
+COPY --from=builder /opt/app/build/blob-syncer ${WORKDIR}
 
 # Run the app
-CMD /app/blob-syncer-server --config-path "$CONFIG_FILE_PATH" --port 8080
+CMD /app/blob-syncer --config-path "$CONFIG_FILE_PATH"
