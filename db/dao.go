@@ -121,7 +121,7 @@ func (d *BlobSvcDB) GetLatestFinalizingBundle() (*Bundle, error) {
 func (d *BlobSvcDB) CreateBundle(b *Bundle) error {
 	return d.db.Transaction(func(dbTx *gorm.DB) error {
 		err := dbTx.Create(b).Error
-		if err != nil && MysqlErrCode(err) != ErrDuplicateEntryCode {
+		if err != nil && MysqlErrCode(err) == ErrDuplicateEntryCode {
 			return nil
 		}
 		return err
@@ -138,12 +138,12 @@ func (d *BlobSvcDB) UpdateBundleStatus(bundleName string, status InnerBundleStat
 func (d *BlobSvcDB) SaveBlockAndBlob(block *Block, blobs []*Blob) error {
 	return d.db.Transaction(func(dbTx *gorm.DB) error {
 		err := dbTx.Save(block).Error
-		if err != nil && MysqlErrCode(err) != ErrDuplicateEntryCode {
+		if err != nil && MysqlErrCode(err) == ErrDuplicateEntryCode {
 			return err
 		}
 		if len(blobs) != 0 {
 			err = dbTx.Save(blobs).Error
-			if err != nil && MysqlErrCode(err) != ErrDuplicateEntryCode {
+			if err != nil && MysqlErrCode(err) == ErrDuplicateEntryCode {
 				return err
 			}
 		}

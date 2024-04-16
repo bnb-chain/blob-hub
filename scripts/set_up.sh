@@ -26,25 +26,29 @@ function prepare() {
 }
 
 function create_bucket() {
-
     prepare
-
-    ./gnfd-cmd -c ./config.toml --home ./ sp ls
-    sleep 5
     ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt bucket create gnfd://${BUCKET_NAME}
     ./gnfd-cmd -c ./config.toml --home ./ bucket head gnfd://${BUCKET_NAME}
     echo "bucket created"
 }
 
-
 function grant() {
     prepare
-
     ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt policy put --grantee ${GRANTEE_BUNDLE_ACCOUNT} --actions createObj  grn:b::"$BUCKET_NAME"
     sleep 5
     ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt fee grant --grantee ${GRANTEE_BUNDLE_ACCOUNT} --allowance ${ALLOWANCE}
+    echo "granted permission"
 }
 
+function all() {
+    prepare
+    ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt bucket create gnfd://${BUCKET_NAME}
+    sleep 5
+    ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt policy put --grantee ${GRANTEE_BUNDLE_ACCOUNT} --actions createObj  grn:b::"$BUCKET_NAME"
+    sleep 5
+    ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt fee grant --grantee ${GRANTEE_BUNDLE_ACCOUNT} --allowance ${ALLOWANCE}
+    echo "created bucket and granted permission"
+}
 
 CMD=$1
 case ${CMD} in
@@ -53,6 +57,9 @@ case ${CMD} in
   ;;
 --grant)
   grant
+  ;;
+--all)
+  all
   ;;
 esac
 
