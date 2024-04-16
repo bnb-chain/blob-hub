@@ -255,3 +255,32 @@ The Blob syncer server provides eth compatible API to query historical blob
   ]
 } 
 ```
+
+
+## Access to blob data directly in greenfield
+
+In scenarios where the Bundle Service is inaccessible, direct access to blob data stored in Greenfield may be necessary, as blobs are consolidated into a bundle object. 
+You can retrieve the bundle object and extract specific blobs from it.
+
+### Namimg pattern
+
+The bundle objects uploaded to Greenfield adhere to the naming pattern `blobs_s{startSlot}_e{endSlot}`. For instance, if a bundle encompasses blobs within 30 slots, the bundle object could be named `blobs_s8864048_e8864077`, where 8864048 represents the start slot and 8864077 denotes the end slot. The individual blobs contained within this bundle follow the naming convention `blob_h{slot}_i{index}`, such as `blob_h8864074_i3`.
+
+### Retrieving Blobs via Bundle SDK
+
+The [bundle SDK](https://github.com/bnb-chain/greenfield-bundle-sdk) offers commands to fetch the bundle object from Greenfield. Follow the steps below:
+
+
+```bash
+git clone https://github.com/bnb-chain/greenfield-bundle-sdk.git
+
+cd greenfield-bundle-sdk
+
+make build
+
+cd build
+
+./bundler download -bucket eth-blob2 -object blobs_s8864048_e8864077 -chain-id greenfield_5600-1 -rpc-url https://gnfd-testnet-fullnode-tendermint-us.bnbchain.org:443  -output ./tmp
+```
+
+Once the bundle is downloaded and extracted, all original blob files can be found within the `tmp` directory.
