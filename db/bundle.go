@@ -6,6 +6,7 @@ const (
 	Finalizing InnerBundleStatus = 0
 	Finalized  InnerBundleStatus = 1 // when a bundle is uploaded to bundle service, its status will be Finalized
 	Sealed     InnerBundleStatus = 2 // todo The post verification process should check if a bundle is indeed sealed onchain
+	Deprecated InnerBundleStatus = 3
 )
 
 type Bundle struct {

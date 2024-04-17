@@ -8,7 +8,7 @@ assignees: ''
 
 #### System information
 
-Relayer version: (if getting from release page)
+Blob syncer version: (if getting from release page)
 OS & Version: Windows/Linux/OSX
 Commit hash : (if `develop`)
 

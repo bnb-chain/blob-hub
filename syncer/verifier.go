@@ -44,7 +44,7 @@ func (s *BlobSyncer) verify() error {
 	}
 	verifyBlockSlot := verifyBlock.Slot
 	if verifyBlock.BlobCount == 0 {
-		if err = s.blobDao.UpdateBlockToVerifiedStatus(verifyBlockSlot); err != nil {
+		if err = s.blobDao.UpdateBlockStatus(verifyBlockSlot, db.Verified); err != nil {
 			logging.Logger.Errorf("failed to update block status, slot=%d err=%s", verifyBlockSlot, err.Error())
 			return err
 		}
@@ -100,8 +100,8 @@ func (s *BlobSyncer) verify() error {
 		}
 		return err
 	}
-	if err = s.blobDao.UpdateBlockToVerifiedStatus(verifyBlockSlot); err != nil {
-		logging.Logger.Errorf("failed to update block status, slot=%d err=%s", verifyBlockSlot, err.Error())
+	if err = s.blobDao.UpdateBlockStatus(verifyBlockSlot, db.Verified); err != nil {
+		logging.Logger.Errorf("failed to update block status to verified, slot=%d err=%s", verifyBlockSlot, err.Error())
 		return err
 	}
 	metrics.VerifiedSlotGauge.Set(float64(verifyBlockSlot))
@@ -177,6 +177,9 @@ func (s *BlobSyncer) verifyBlobAtSlot(slot uint64, sidecars []*structs.Sidecar, 
 }
 
 func (s *BlobSyncer) reUploadBundle(bundleName string) error {
+	if err := s.blobDao.UpdateBundleStatus(bundleName, db.Deprecated); err != nil {
+		return err
+	}
 	newBundleName := bundleName + "_calibrated_" + util.Int64ToString(time.Now().Unix())
 	startSlot, endSlot, err := types.ParseBundleName(bundleName)
 	if err != nil {
@@ -190,12 +193,13 @@ func (s *BlobSyncer) reUploadBundle(bundleName string) error {
 		}
 	}
 	if err = s.blobDao.CreateBundle(&db.Bundle{
-		Name:   newBundleName,
-		Status: db.Finalizing,
+		Name:       newBundleName,
+		Status:     db.Finalizing,
+		Calibrated: true,
 	}); err != nil {
 		return err
 	}
-	for slot := startSlot; slot < endSlot; slot++ {
+	for slot := startSlot; slot <= endSlot; slot++ {
 		ctx, cancel := context.WithTimeout(context.Background(), RPCTimeout)
 		defer cancel()
 		sideCars, err := s.ethClients.BeaconClient.GetBlob(ctx, slot)
@@ -207,11 +211,28 @@ func (s *BlobSyncer) reUploadBundle(bundleName string) error {
 		}
 		block, err := s.ethClients.BeaconClient.GetBlock(ctx, slot)
 		if err != nil {
+			if err == external.ErrBlockNotFound {
+				continue
+			}
+			return err
+		}
+		blockMeta, err := s.blobDao.GetBlock(slot)
+		if err != nil {
+			return err
+		}
+		blobMetas, err := s.blobDao.GetBlobBySlot(slot)
+		if err != nil {
 			return err
 		}
 		blockToSave, blobToSave, err := s.ToBlockAndBlobs(block, sideCars, slot, newBundleName)
 		if err != nil {
 			return err
+		}
+		blockToSave.Id = blockMeta.Id
+		for i, preBlob := range blobMetas {
+			if i < len(blobToSave) {
+				blobToSave[i].Id = preBlob.Id
+			}
 		}
 		err = s.blobDao.SaveBlockAndBlob(blockToSave, blobToSave)
 		if err != nil {
@@ -220,8 +241,8 @@ func (s *BlobSyncer) reUploadBundle(bundleName string) error {
 		}
 		logging.Logger.Infof("save calibrated block(slot=%d) and blobs(num=%d) to DB \n", slot, len(blobToSave))
 	}
-
-	if err := s.finalizeBundle(newBundleName, s.getBundleDir(newBundleName), s.getBundleFilePath(newBundleName)); err != nil {
+	if err = s.finalizeBundle(newBundleName, s.getBundleDir(newBundleName), s.getBundleFilePath(newBundleName)); err != nil {
+		logging.Logger.Errorf("failed to finalized bundle, name=%s, err=%s", newBundleName, err.Error())
 		return err
 	}
 	return nil

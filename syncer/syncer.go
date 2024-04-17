@@ -11,13 +11,14 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
 	v1 "github.com/prysmaticlabs/prysm/v5/proto/engine/v1"
 	ethpb "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
 	"github.com/prysmaticlabs/prysm/v5/runtime/version"
-	"gorm.io/gorm"
 
 	"github.com/bnb-chain/blob-syncer/config"
 	"github.com/bnb-chain/blob-syncer/db"
@@ -92,18 +93,9 @@ func (s *BlobSyncer) StartLoop() {
 		}
 	}()
 	go func() {
-		nextSlot, err := s.calNextSlot()
-		if err != nil {
-			panic(err)
-		}
-		err = s.LoadProgressAndResume(nextSlot)
-		if err != nil {
-			panic(err)
-		}
 		verifyTicket := time.NewTicker(LoopSleepTime)
-
 		for range verifyTicket.C {
-			if err = s.verify(); err != nil {
+			if err := s.verify(); err != nil {
 				logging.Logger.Error(err)
 				continue
 			}
@@ -323,6 +315,22 @@ func (s *BlobSyncer) LoadProgressAndResume(nextSlot uint64) error {
 		if err != nil {
 			return err
 		}
+
+		// might no longer need to process the bundle even-thought it is not finalized if the user set the config to skip it.
+		if nextSlot > endSlot {
+			err = s.blobDao.UpdateBlocksStatus(startSlot, endSlot, db.Skipped)
+			if err != nil {
+				logging.Logger.Errorf("failed to update blocks status, startSlot=%d, endSlot=%d", startSlot, endSlot)
+				return err
+			}
+			logging.Logger.Infof("the config slot number %d is larger than the recorded bundle end slot %d, will resume from the config slot", nextSlot, endSlot)
+			if err = s.blobDao.UpdateBundleStatus(finalizingBundle.Name, db.Deprecated); err != nil {
+				return err
+			}
+			startSlot = nextSlot
+			endSlot = nextSlot + s.getCreateBundleSlotInterval() - 1
+		}
+
 	}
 	s.bundleDetail = &curBundleDetail{
 		name:         types.GetBundleName(startSlot, endSlot),

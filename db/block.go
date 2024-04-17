@@ -5,6 +5,7 @@ type Status int
 const (
 	Processed Status = 0
 	Verified  Status = 1 // each block's blobs will be verified by the post-verification process
+	Skipped   Status = 2
 )
 
 type Block struct {

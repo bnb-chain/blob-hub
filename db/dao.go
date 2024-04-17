@@ -26,7 +26,8 @@ type BlockDB interface {
 	GetBlockByRoot(root string) (*Block, error)
 	GetLatestProcessedBlock() (*Block, error)
 	GetEarliestUnverifiedBlock() (*Block, error)
-	UpdateBlockToVerifiedStatus(slot uint64) error
+	UpdateBlockStatus(slot uint64, status Status) error
+	UpdateBlocksStatus(startSlot, endSlot uint64, status Status) error
 }
 
 func (d *BlobSvcDB) GetBlock(slot uint64) (*Block, error) {
@@ -65,10 +66,17 @@ func (d *BlobSvcDB) GetEarliestUnverifiedBlock() (*Block, error) {
 	return &block, nil
 }
 
-func (d *BlobSvcDB) UpdateBlockToVerifiedStatus(slot uint64) error {
+func (d *BlobSvcDB) UpdateBlockStatus(slot uint64, status Status) error {
 	return d.db.Transaction(func(dbTx *gorm.DB) error {
 		return dbTx.Model(Block{}).Where("slot = ?", slot).Updates(
-			Block{Status: Verified}).Error
+			Block{Status: status}).Error
+	})
+}
+
+func (d *BlobSvcDB) UpdateBlocksStatus(startSlot, endSlot uint64, status Status) error {
+	return d.db.Transaction(func(dbTx *gorm.DB) error {
+		return dbTx.Model(Block{}).Where("slot >= ? and slot <= ?", startSlot, endSlot).Updates(
+			Block{Status: status}).Error
 	})
 }
 
@@ -138,12 +146,12 @@ func (d *BlobSvcDB) UpdateBundleStatus(bundleName string, status InnerBundleStat
 func (d *BlobSvcDB) SaveBlockAndBlob(block *Block, blobs []*Blob) error {
 	return d.db.Transaction(func(dbTx *gorm.DB) error {
 		err := dbTx.Save(block).Error
-		if err != nil && MysqlErrCode(err) == ErrDuplicateEntryCode {
+		if err != nil && MysqlErrCode(err) != ErrDuplicateEntryCode {
 			return err
 		}
 		if len(blobs) != 0 {
 			err = dbTx.Save(blobs).Error
-			if err != nil && MysqlErrCode(err) == ErrDuplicateEntryCode {
+			if err != nil && MysqlErrCode(err) != ErrDuplicateEntryCode {
 				return err
 			}
 		}

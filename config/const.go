@@ -10,5 +10,5 @@ const (
 	EnvVarDBUserPass     = "DB_PASSWORD"
 	EnvVarPrivateKey     = "PRIVATE_KEY"
 
-	DefaultCreateBundleSlotInterval = 10
+	DefaultCreateBundleSlotInterval = 20
 )
