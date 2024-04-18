@@ -9,7 +9,7 @@ function prepare() {
     cd ${WORKSPACE}
     git clone https://github.com/bnb-chain/greenfield-cmd.git
     cd greenfield-cmd
-    git checkout master
+    git checkout allowance
     make build
     cd build
 
@@ -27,7 +27,8 @@ function prepare() {
 
 function create_bucket() {
     prepare
-    ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt bucket create gnfd://${BUCKET_NAME}
+    ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt bucket create --primarySP ${SP_ADDRESS} --chargedQuota ${QUOTA} gnfd://${BUCKET_NAME}
+    sleep 5
     ./gnfd-cmd -c ./config.toml --home ./ bucket head gnfd://${BUCKET_NAME}
     echo "bucket created"
 }
@@ -42,8 +43,9 @@ function grant() {
 
 function all() {
     prepare
-    ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt bucket create gnfd://${BUCKET_NAME}
+    ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt bucket create --primarySP ${SP_ADDRESS} --chargedQuota ${QUOTA} gnfd://${BUCKET_NAME}
     sleep 5
+    ./gnfd-cmd -c ./config.toml --home ./ bucket head gnfd://${BUCKET_NAME}
     ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt policy put --grantee ${GRANTEE_BUNDLE_ACCOUNT} --actions createObj  grn:b::"$BUCKET_NAME"
     sleep 5
     ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt fee grant --grantee ${GRANTEE_BUNDLE_ACCOUNT} --allowance ${ALLOWANCE}
