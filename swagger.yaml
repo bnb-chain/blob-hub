@@ -1,0 +1,116 @@
+swagger: '2.0'
+info:
+  version: 1.0.0
+  title: Blob Syncer Service API
+  description: API for handling blob query in the Blob Syncer.
+host: 'blob-syncer'
+basePath: "/eth/v1"
+schemes:
+  - http
+
+paths:
+  /beacon/blob_sidecars/{block_id}:
+    get:
+      tags:
+        - "blob"
+      summary: "Get blob sidecars by block num"
+      operationId: "getBlobSidecarsByBlockNum"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "block_id"
+          in: "path"
+          description: "Block identifier. Can be one of: 'head' (canonical head in node's view), 'genesis', 'finalized', <slot>, <hex encoded blockRoot with 0x prefix>"
+          required: true
+          type: string
+          minLength: 1
+        - name: "indices"
+          in: "query"
+          description: "Array of indices for blob sidecars to request for in the specified block. Returns all blob sidecars in the block if not specified"
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/GetBlobSideCarsResponse"
+        "400":
+          description: 'Bad Request'
+          schema:
+            $ref: "#/definitions/Error"
+        "404":
+          description: 'blob not found'
+          schema:
+            $ref: "#/definitions/Error"
+        "500":
+          description: 'internal server error'
+          schema:
+            $ref: "#/definitions/Error"
+
+definitions:
+  GetBlobSideCarsResponse:
+    type: object
+    properties:
+      code:
+        type: integer
+        description: "status code"
+        example: 200
+      message:
+        type: string
+        description: "error message if there is error"
+        example: "signature invalid"
+      data:
+        description: "actual data for request"
+        type: array
+        items:
+          $ref: "#/definitions/Sidecar"
+  Sidecar:
+    type: object
+    properties:
+      index:
+        type: string
+        example: 1
+      blob:
+        type: string
+      kzg_commitment:
+        type: string
+      kzg_proof:
+        type: string
+      kzg_commitment_inclusion_proof:
+        type: array
+        items:
+          type: string
+      signed_block_header:
+        type: object
+        properties:
+          signature:
+            type: string
+          message:
+            type: object
+            properties:
+              slot:
+                type: string
+              proposer_index:
+                type: string
+              parent_root:
+                type: string
+              state_root:
+                type: string
+              body_root:
+                type: string
+
+  Error:
+    type: object
+    properties:
+      code:
+        x-omitempty: false
+        type: integer
+        format: int64
+        description: "HTTP error code"
+        example: "400/500"
+      message:
+        x-omitempty: false
+        type: string
+        description: "Error message"
+        example: "Bad request/Internal server error"

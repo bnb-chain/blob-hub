@@ -1,0 +1,6 @@
+.DS_Store
+.idea/*
+build/*
+.local
+/temp/
+/config/local/
