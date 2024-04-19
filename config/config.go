@@ -11,8 +11,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"github.com/bnb-chain/blob-syncer/cache"
-	syncerdb "github.com/bnb-chain/blob-syncer/db"
+	"github.com/bnb-chain/blob-hub/cache"
+	syncerdb "github.com/bnb-chain/blob-hub/db"
 )
 
 type SyncerConfig struct {

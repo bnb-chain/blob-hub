@@ -1,19 +1,19 @@
-# Blob Syncer
+# Blob Hub
 
 ## Overview
 
-The Blob-Syncer service acts as an intermediary between Greenfield and Ethereum/BSC, continuously retrieving blobs from Ethereum/BSC and persisting in Greenfield..
+The blob-hub service acts as an intermediary between Greenfield and Ethereum/BSC, continuously retrieving blobs from Ethereum/BSC and persisting in Greenfield..
 These blobs, collected from a specific Beacon slot range on Ethereum or specific block height range on BSC, are consolidated into a bundle and transmitted to the [Bundle Service](https://docs.bnbchain.org/greenfield-docs/docs/api/bundle-service/)
 for further processing. Subsequently, the bundle is stored in Greenfield for long-term archival purposes. Additionally,
-the Blob-Syncer service offers APIs that enable users to access and retrieve historical blobs as needed.
+the blob-hub service offers APIs that enable users to access and retrieve historical blobs as needed.
 
 ## Disclaimer
 - Data Accessibility. Due to the limited size of the Greenfield traffic package purchased, this service does not guarantee constant data access but ensures eventual access.
 - Data latency. As the blob syncer need to bundle blobs across multi blocks, the latency is around 10-20 minutes before the blob is accessible on Greenfield.
 
 ## Components
-- **blob-syncer**: This component is specifically engineered to synchronize blobs and securely store them in Greenfield. It includes a post-verification process to ensure the integrity of blob storage.
-- **blob-syncer-server**: This component functions as the API server, catering to users' requests for querying blobs.
+- **syncer**: This component is specifically engineered to synchronize blobs and securely store them in Greenfield. It includes a post-verification process to ensure the integrity of blob storage.
+- **server**: This component functions as the API server, catering to users' requests for querying blobs.
 
 ## Support Network
 | Network  | Endpoint    | Bucket      |
@@ -202,7 +202,7 @@ make build
 make build_syncer
 ```
 
-### Build blob syncer api server
+### Build Blob Hub api server
 
 ```shell
 make build_server
@@ -213,7 +213,7 @@ make build_server
 ### Run the Blob Syncer instance
 
 ```shell
-./build/blob-syncer --config-path config/local/config-syncer.json
+./build/syncer --config-path config/local/config-syncer.json
 ```
 
 ```json
@@ -236,7 +236,7 @@ make build_server
     "dialect": "mysql",
     "username": "root",
     "password": "pass",
-    "url": "/blob-syncer?charset=utf8&parseTime=True&loc=Local",
+    "url": "/blob-hub?charset=utf8&parseTime=True&loc=Local",
     "max_idle_conns": 10,
     "max_open_conns": 100
   },
@@ -260,5 +260,5 @@ make build_server
 ### Run the api server
 
 ```shell
-./build/blob-syncer-server --config-path config/local/config-server.json --port 8080 
+./build/server --config-path config/local/config-server.json --port 8080
 ```

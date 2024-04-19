@@ -20,13 +20,13 @@ import (
 	ethpb "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
 	"github.com/prysmaticlabs/prysm/v5/runtime/version"
 
-	"github.com/bnb-chain/blob-syncer/config"
-	"github.com/bnb-chain/blob-syncer/db"
-	"github.com/bnb-chain/blob-syncer/external"
-	"github.com/bnb-chain/blob-syncer/logging"
-	"github.com/bnb-chain/blob-syncer/metrics"
-	"github.com/bnb-chain/blob-syncer/types"
-	"github.com/bnb-chain/blob-syncer/util"
+	"github.com/bnb-chain/blob-hub/config"
+	"github.com/bnb-chain/blob-hub/db"
+	"github.com/bnb-chain/blob-hub/external"
+	"github.com/bnb-chain/blob-hub/logging"
+	"github.com/bnb-chain/blob-hub/metrics"
+	"github.com/bnb-chain/blob-hub/types"
+	"github.com/bnb-chain/blob-hub/util"
 )
 
 const (

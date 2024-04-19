@@ -44,11 +44,11 @@ RUN apk add --no-cache $PACKAGES \
 
 WORKDIR ${WORKDIR}
 
-COPY --from=builder /opt/app/build/blob-syncer ${WORKDIR}/
+COPY --from=builder /opt/app/build/syncer ${WORKDIR}/
 RUN chown -R ${USER_UID}:${USER_GID} ${WORKDIR}
 USER ${USER_UID}:${USER_GID}
 
 VOLUME [ $BLOB_SYNCER_HOME ]
 
 # Run the app
-CMD /app/blob-syncer --config-path "$CONFIG_FILE_PATH"
+CMD /app/syncer --config-path "$CONFIG_FILE_PATH"

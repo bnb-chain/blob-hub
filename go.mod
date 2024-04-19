@@ -1,4 +1,4 @@
-module github.com/bnb-chain/blob-syncer
+module github.com/bnb-chain/blob-hub
 
 go 1.20
 

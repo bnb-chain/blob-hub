@@ -23,11 +23,11 @@ func init() {
   ],
   "swagger": "2.0",
   "info": {
-    "description": "API for handling blob query in the Blob Syncer.",
-    "title": "Blob Syncer Service API",
+    "description": "API for handling blob query in the Blob Hub.",
+    "title": "Blob Hub Service API",
     "version": "1.0.0"
   },
-  "host": "blob-syncer",
+  "host": "blob-hub",
   "basePath": "/eth/v1",
   "paths": {
     "/beacon/blob_sidecars/{block_id}": {
@@ -189,11 +189,11 @@ func init() {
   ],
   "swagger": "2.0",
   "info": {
-    "description": "API for handling blob query in the Blob Syncer.",
-    "title": "Blob Syncer Service API",
+    "description": "API for handling blob query in the Blob Hub.",
+    "title": "Blob Hub Service API",
     "version": "1.0.0"
   },
-  "host": "blob-syncer",
+  "host": "blob-hub",
   "basePath": "/eth/v1",
   "paths": {
     "/beacon/blob_sidecars/{block_id}": {

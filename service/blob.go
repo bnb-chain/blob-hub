@@ -3,12 +3,12 @@ package service
 import (
 	"fmt"
 
-	"github.com/bnb-chain/blob-syncer/cache"
-	"github.com/bnb-chain/blob-syncer/config"
-	"github.com/bnb-chain/blob-syncer/db"
-	"github.com/bnb-chain/blob-syncer/external"
-	"github.com/bnb-chain/blob-syncer/models"
-	"github.com/bnb-chain/blob-syncer/util"
+	"github.com/bnb-chain/blob-hub/cache"
+	"github.com/bnb-chain/blob-hub/config"
+	"github.com/bnb-chain/blob-hub/db"
+	"github.com/bnb-chain/blob-hub/external"
+	"github.com/bnb-chain/blob-hub/models"
+	"github.com/bnb-chain/blob-hub/util"
 )
 
 const prefixHex = "0x"

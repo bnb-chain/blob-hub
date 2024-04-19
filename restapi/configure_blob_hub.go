@@ -7,27 +7,27 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/bnb-chain/blob-hub/cache"
+	"github.com/bnb-chain/blob-hub/config"
+	syncerdb "github.com/bnb-chain/blob-hub/db"
+	"github.com/bnb-chain/blob-hub/external"
+	"github.com/bnb-chain/blob-hub/restapi/handlers"
+	"github.com/bnb-chain/blob-hub/service"
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/swag"
 
-	"github.com/bnb-chain/blob-syncer/cache"
-	"github.com/bnb-chain/blob-syncer/config"
-	syncerdb "github.com/bnb-chain/blob-syncer/db"
-	"github.com/bnb-chain/blob-syncer/external"
-	"github.com/bnb-chain/blob-syncer/restapi/handlers"
-	"github.com/bnb-chain/blob-syncer/restapi/operations"
-	"github.com/bnb-chain/blob-syncer/restapi/operations/blob"
-	"github.com/bnb-chain/blob-syncer/service"
+	"github.com/bnb-chain/blob-hub/restapi/operations"
+	"github.com/bnb-chain/blob-hub/restapi/operations/blob"
 )
 
-//go:generate swagger generate server --target ../../blob-syncer --name BlobSyncer --spec ../swagger.yaml --principal interface{}
+//go:generate swagger generate server --target ../../blob-syncer --name BlobHub --spec ../swagger.yaml --principal interface{}
 
 var cliOpts = struct {
 	ConfigFilePath string `short:"c" long:"config-path" description:"Config path" default:""`
 }{}
 
-func configureFlags(api *operations.BlobSyncerAPI) {
+func configureFlags(api *operations.BlobHubAPI) {
 	param := swag.CommandLineOptionsGroup{
 		ShortDescription: "config",
 		Options:          &cliOpts,
@@ -35,7 +35,7 @@ func configureFlags(api *operations.BlobSyncerAPI) {
 	api.CommandLineOptionsGroups = []swag.CommandLineOptionsGroup{param}
 }
 
-func configureAPI(api *operations.BlobSyncerAPI) http.Handler {
+func configureAPI(api *operations.BlobHubAPI) http.Handler {
 	// configure the api here
 	api.ServeError = errors.ServeError
 
@@ -102,6 +102,7 @@ func configureServer(s *http.Server, scheme, addr string) {
 		panic("currently only local cache is support.")
 	}
 	service.BlobSvc = service.NewBlobService(blobDB, bundleClient, cacheSvc, cfg)
+
 }
 
 // The middleware configuration is for the handler executors. These do not apply to the swagger.json document.

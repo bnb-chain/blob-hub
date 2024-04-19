@@ -7,10 +7,10 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/go-openapi/runtime/middleware"
 
-	"github.com/bnb-chain/blob-syncer/models"
-	"github.com/bnb-chain/blob-syncer/restapi/operations/blob"
-	"github.com/bnb-chain/blob-syncer/service"
-	"github.com/bnb-chain/blob-syncer/util"
+	"github.com/bnb-chain/blob-hub/models"
+	"github.com/bnb-chain/blob-hub/restapi/operations/blob"
+	"github.com/bnb-chain/blob-hub/service"
+	"github.com/bnb-chain/blob-hub/util"
 )
 
 const rootLength = 32

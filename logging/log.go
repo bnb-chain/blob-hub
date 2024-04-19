@@ -3,15 +3,16 @@ package logging
 import (
 	"os"
 
-	"github.com/op/go-logging"
 	"gopkg.in/natefinch/lumberjack.v2"
 
-	"github.com/bnb-chain/blob-syncer/config"
+	"github.com/op/go-logging"
+
+	"github.com/bnb-chain/blob-hub/config"
 )
 
 var (
 	// Logger instance for quick declarative logging levels
-	Logger = logging.MustGetLogger("blob-syncer")
+	Logger = logging.MustGetLogger("blob-hub")
 	// log levels that are available
 	levels = map[string]logging.Level{
 		"CRITICAL": logging.CRITICAL,

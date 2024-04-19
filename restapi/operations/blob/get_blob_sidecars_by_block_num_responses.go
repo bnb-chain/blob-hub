@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-openapi/runtime"
 
-	"github.com/bnb-chain/blob-syncer/models"
+	"github.com/bnb-chain/blob-hub/models"
 )
 
 // GetBlobSidecarsByBlockNumOKCode is the HTTP code returned for type GetBlobSidecarsByBlockNumOK

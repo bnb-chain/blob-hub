@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 
-	"github.com/bnb-chain/blob-syncer/models"
+	"github.com/bnb-chain/blob-hub/models"
 )
 
 // Verify Interface Compliance
