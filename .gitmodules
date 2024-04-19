@@ -1,0 +1,3 @@
+[submodule "bundle-sdk"]
+	path = bundle-sdk
+	url = https://github.com/bnb-chain/greenfield-bundle-sdk
