@@ -27,7 +27,7 @@ var (
 	}
 )
 
-const DefaultMetricsAddress = "localhost:9090"
+const DefaultMetricsAddress = "0.0.0.0:9090"
 
 type Metrics struct {
 	httpAddress string

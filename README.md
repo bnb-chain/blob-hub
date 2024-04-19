@@ -18,7 +18,7 @@ the blob-hub service offers APIs that enable users to access and retrieve histor
 ## Support Network
 | Network  | Endpoint    | Bucket      |
 |----------|-------------|-------------|
-| Ethereum | coming soon | coming soon |
+| Ethereum | https://gnfd-blobhub.bnbchain.org | [ethereum-mainnet-blobs](https://greenfieldscan.com/bucket/0x00000000000000000000000000000000000000000000000000000000000019e7) |
 | BSC      | coming soon | coming soon |
 
 Besides the mainnet setting up, we provide a Greenfield testnet(where data could be lost) endpoints:
