@@ -7,11 +7,11 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/bnb-chain/blob-syncer/config"
-	syncerdb "github.com/bnb-chain/blob-syncer/db"
-	"github.com/bnb-chain/blob-syncer/logging"
-	"github.com/bnb-chain/blob-syncer/metrics"
-	"github.com/bnb-chain/blob-syncer/syncer"
+	"github.com/bnb-chain/blob-hub/config"
+	syncerdb "github.com/bnb-chain/blob-hub/db"
+	"github.com/bnb-chain/blob-hub/logging"
+	"github.com/bnb-chain/blob-hub/metrics"
+	"github.com/bnb-chain/blob-hub/syncer"
 )
 
 func initFlags() {

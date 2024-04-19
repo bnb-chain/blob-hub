@@ -8,15 +8,16 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
 	"gorm.io/gorm"
 
-	"github.com/bnb-chain/blob-syncer/db"
-	"github.com/bnb-chain/blob-syncer/external"
-	"github.com/bnb-chain/blob-syncer/logging"
-	"github.com/bnb-chain/blob-syncer/metrics"
-	"github.com/bnb-chain/blob-syncer/types"
-	"github.com/bnb-chain/blob-syncer/util"
+	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
+
+	"github.com/bnb-chain/blob-hub/db"
+	"github.com/bnb-chain/blob-hub/external"
+	"github.com/bnb-chain/blob-hub/logging"
+	"github.com/bnb-chain/blob-hub/metrics"
+	"github.com/bnb-chain/blob-hub/types"
+	"github.com/bnb-chain/blob-hub/util"
 )
 
 var (

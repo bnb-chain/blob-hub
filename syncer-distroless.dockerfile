@@ -44,7 +44,7 @@ ENV CONFIG_FILE_PATH /opt/app/config/config.json
 
 ENV WORKDIR=/app
 WORKDIR ${WORKDIR}
-COPY --from=builder /opt/app/build/blob-syncer ${WORKDIR}
+COPY --from=builder /opt/app/build/syncer ${WORKDIR}
 
 # Run the app
-CMD /app/blob-syncer --config-path "$CONFIG_FILE_PATH"
+CMD /app/syncer --config-path "$CONFIG_FILE_PATH"

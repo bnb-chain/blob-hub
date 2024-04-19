@@ -1,9 +1,9 @@
 swagger: '2.0'
 info:
   version: 1.0.0
-  title: Blob Syncer Service API
-  description: API for handling blob query in the Blob Syncer.
-host: 'blob-syncer'
+  title: Blob Hub Service API
+  description: API for handling blob query in the Blob Hub.
+host: 'blob-hub'
 basePath: "/eth/v1"
 schemes:
   - http

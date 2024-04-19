@@ -19,12 +19,12 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 
-	"github.com/bnb-chain/blob-syncer/restapi/operations/blob"
+	"github.com/bnb-chain/blob-hub/restapi/operations/blob"
 )
 
-// NewBlobSyncerAPI creates a new BlobSyncer instance
-func NewBlobSyncerAPI(spec *loads.Document) *BlobSyncerAPI {
-	return &BlobSyncerAPI{
+// NewBlobHubAPI creates a new BlobHub instance
+func NewBlobHubAPI(spec *loads.Document) *BlobHubAPI {
+	return &BlobHubAPI{
 		handlers:            make(map[string]map[string]http.Handler),
 		formats:             strfmt.Default,
 		defaultConsumes:     "application/json",
@@ -50,8 +50,8 @@ func NewBlobSyncerAPI(spec *loads.Document) *BlobSyncerAPI {
 	}
 }
 
-/*BlobSyncerAPI API for handling blob query in the Blob Syncer. */
-type BlobSyncerAPI struct {
+/*BlobHubAPI API for handling blob query in the Blob Hub. */
+type BlobHubAPI struct {
 	spec            *loads.Document
 	context         *middleware.Context
 	handlers        map[string]map[string]http.Handler
@@ -106,52 +106,52 @@ type BlobSyncerAPI struct {
 }
 
 // UseRedoc for documentation at /docs
-func (o *BlobSyncerAPI) UseRedoc() {
+func (o *BlobHubAPI) UseRedoc() {
 	o.useSwaggerUI = false
 }
 
 // UseSwaggerUI for documentation at /docs
-func (o *BlobSyncerAPI) UseSwaggerUI() {
+func (o *BlobHubAPI) UseSwaggerUI() {
 	o.useSwaggerUI = true
 }
 
 // SetDefaultProduces sets the default produces media type
-func (o *BlobSyncerAPI) SetDefaultProduces(mediaType string) {
+func (o *BlobHubAPI) SetDefaultProduces(mediaType string) {
 	o.defaultProduces = mediaType
 }
 
 // SetDefaultConsumes returns the default consumes media type
-func (o *BlobSyncerAPI) SetDefaultConsumes(mediaType string) {
+func (o *BlobHubAPI) SetDefaultConsumes(mediaType string) {
 	o.defaultConsumes = mediaType
 }
 
 // SetSpec sets a spec that will be served for the clients.
-func (o *BlobSyncerAPI) SetSpec(spec *loads.Document) {
+func (o *BlobHubAPI) SetSpec(spec *loads.Document) {
 	o.spec = spec
 }
 
 // DefaultProduces returns the default produces media type
-func (o *BlobSyncerAPI) DefaultProduces() string {
+func (o *BlobHubAPI) DefaultProduces() string {
 	return o.defaultProduces
 }
 
 // DefaultConsumes returns the default consumes media type
-func (o *BlobSyncerAPI) DefaultConsumes() string {
+func (o *BlobHubAPI) DefaultConsumes() string {
 	return o.defaultConsumes
 }
 
 // Formats returns the registered string formats
-func (o *BlobSyncerAPI) Formats() strfmt.Registry {
+func (o *BlobHubAPI) Formats() strfmt.Registry {
 	return o.formats
 }
 
 // RegisterFormat registers a custom format validator
-func (o *BlobSyncerAPI) RegisterFormat(name string, format strfmt.Format, validator strfmt.Validator) {
+func (o *BlobHubAPI) RegisterFormat(name string, format strfmt.Format, validator strfmt.Validator) {
 	o.formats.Add(name, format, validator)
 }
 
-// Validate validates the registrations in the BlobSyncerAPI
-func (o *BlobSyncerAPI) Validate() error {
+// Validate validates the registrations in the BlobHubAPI
+func (o *BlobHubAPI) Validate() error {
 	var unregistered []string
 
 	if o.JSONConsumer == nil {
@@ -174,23 +174,23 @@ func (o *BlobSyncerAPI) Validate() error {
 }
 
 // ServeErrorFor gets a error handler for a given operation id
-func (o *BlobSyncerAPI) ServeErrorFor(operationID string) func(http.ResponseWriter, *http.Request, error) {
+func (o *BlobHubAPI) ServeErrorFor(operationID string) func(http.ResponseWriter, *http.Request, error) {
 	return o.ServeError
 }
 
 // AuthenticatorsFor gets the authenticators for the specified security schemes
-func (o *BlobSyncerAPI) AuthenticatorsFor(schemes map[string]spec.SecurityScheme) map[string]runtime.Authenticator {
+func (o *BlobHubAPI) AuthenticatorsFor(schemes map[string]spec.SecurityScheme) map[string]runtime.Authenticator {
 	return nil
 }
 
 // Authorizer returns the registered authorizer
-func (o *BlobSyncerAPI) Authorizer() runtime.Authorizer {
+func (o *BlobHubAPI) Authorizer() runtime.Authorizer {
 	return nil
 }
 
 // ConsumersFor gets the consumers for the specified media types.
 // MIME type parameters are ignored here.
-func (o *BlobSyncerAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Consumer {
+func (o *BlobHubAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Consumer {
 	result := make(map[string]runtime.Consumer, len(mediaTypes))
 	for _, mt := range mediaTypes {
 		switch mt {
@@ -207,7 +207,7 @@ func (o *BlobSyncerAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Con
 
 // ProducersFor gets the producers for the specified media types.
 // MIME type parameters are ignored here.
-func (o *BlobSyncerAPI) ProducersFor(mediaTypes []string) map[string]runtime.Producer {
+func (o *BlobHubAPI) ProducersFor(mediaTypes []string) map[string]runtime.Producer {
 	result := make(map[string]runtime.Producer, len(mediaTypes))
 	for _, mt := range mediaTypes {
 		switch mt {
@@ -223,7 +223,7 @@ func (o *BlobSyncerAPI) ProducersFor(mediaTypes []string) map[string]runtime.Pro
 }
 
 // HandlerFor gets a http.Handler for the provided operation method and path
-func (o *BlobSyncerAPI) HandlerFor(method, path string) (http.Handler, bool) {
+func (o *BlobHubAPI) HandlerFor(method, path string) (http.Handler, bool) {
 	if o.handlers == nil {
 		return nil, false
 	}
@@ -238,8 +238,8 @@ func (o *BlobSyncerAPI) HandlerFor(method, path string) (http.Handler, bool) {
 	return h, ok
 }
 
-// Context returns the middleware context for the blob syncer API
-func (o *BlobSyncerAPI) Context() *middleware.Context {
+// Context returns the middleware context for the blob hub API
+func (o *BlobHubAPI) Context() *middleware.Context {
 	if o.context == nil {
 		o.context = middleware.NewRoutableContext(o.spec, o, nil)
 	}
@@ -247,7 +247,7 @@ func (o *BlobSyncerAPI) Context() *middleware.Context {
 	return o.context
 }
 
-func (o *BlobSyncerAPI) initHandlerCache() {
+func (o *BlobHubAPI) initHandlerCache() {
 	o.Context() // don't care about the result, just that the initialization happened
 	if o.handlers == nil {
 		o.handlers = make(map[string]map[string]http.Handler)
@@ -261,7 +261,7 @@ func (o *BlobSyncerAPI) initHandlerCache() {
 
 // Serve creates a http handler to serve the API over HTTP
 // can be used directly in http.ListenAndServe(":8000", api.Serve(nil))
-func (o *BlobSyncerAPI) Serve(builder middleware.Builder) http.Handler {
+func (o *BlobHubAPI) Serve(builder middleware.Builder) http.Handler {
 	o.Init()
 
 	if o.Middleware != nil {
@@ -274,24 +274,24 @@ func (o *BlobSyncerAPI) Serve(builder middleware.Builder) http.Handler {
 }
 
 // Init allows you to just initialize the handler cache, you can then recompose the middleware as you see fit
-func (o *BlobSyncerAPI) Init() {
+func (o *BlobHubAPI) Init() {
 	if len(o.handlers) == 0 {
 		o.initHandlerCache()
 	}
 }
 
 // RegisterConsumer allows you to add (or override) a consumer for a media type.
-func (o *BlobSyncerAPI) RegisterConsumer(mediaType string, consumer runtime.Consumer) {
+func (o *BlobHubAPI) RegisterConsumer(mediaType string, consumer runtime.Consumer) {
 	o.customConsumers[mediaType] = consumer
 }
 
 // RegisterProducer allows you to add (or override) a producer for a media type.
-func (o *BlobSyncerAPI) RegisterProducer(mediaType string, producer runtime.Producer) {
+func (o *BlobHubAPI) RegisterProducer(mediaType string, producer runtime.Producer) {
 	o.customProducers[mediaType] = producer
 }
 
 // AddMiddlewareFor adds a http middleware to existing handler
-func (o *BlobSyncerAPI) AddMiddlewareFor(method, path string, builder middleware.Builder) {
+func (o *BlobHubAPI) AddMiddlewareFor(method, path string, builder middleware.Builder) {
 	um := strings.ToUpper(method)
 	if path == "/" {
 		path = ""
