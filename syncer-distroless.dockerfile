@@ -45,6 +45,7 @@ ENV CONFIG_FILE_PATH /opt/app/config/config.json
 ENV WORKDIR=/app
 WORKDIR ${WORKDIR}
 COPY --from=builder /opt/app/build/syncer ${WORKDIR}
+COPY --from=builder /opt/app/scripts/set_up.sh ${WORKDIR}
 
 # Run the app
 CMD /app/syncer --config-path "$CONFIG_FILE_PATH"

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 basedir=$(cd `dirname $0`; pwd)
 WORKSPACE=${basedir}
