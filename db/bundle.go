@@ -14,7 +14,7 @@ type Bundle struct {
 	Name        string            `gorm:"NOT NULL;uniqueIndex:idx_bundle_name;size:64"`
 	Status      InnerBundleStatus `gorm:"NOT NULL"`
 	Calibrated  bool
-	CreatedTime int64 `gorm:"NOT NULL"`
+	CreatedTime int64 `gorm:"NOT NULL;comment:created_time"`
 }
 
 func (*Bundle) TableName() string {
