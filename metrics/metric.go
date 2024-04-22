@@ -21,9 +21,15 @@ var (
 		Help: "Verified slot number, all blobs have been verified against the bundle service.",
 	})
 
+	BucketRemainingQuotaGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "bucket_remaining_quota",
+		Help: "Remaining read quota of bucket in bytes",
+	})
+
 	MetricsItems = []prometheus.Collector{
 		SyncedSlotGauge,
 		VerifiedSlotGauge,
+		BucketRemainingQuotaGauge,
 	}
 )
 

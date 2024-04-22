@@ -18,7 +18,7 @@ func NewETHClient(rpcAddrs, beaconRPCAddrs string) *ETHClient {
 	if err != nil {
 		panic("new eth client error")
 	}
-	beaconClient, err := NewBeaconClient(beaconRPCAddrs, time.Second*3)
+	beaconClient, err := NewBeaconClient(beaconRPCAddrs)
 	if err != nil {
 		panic("new eth client error")
 	}

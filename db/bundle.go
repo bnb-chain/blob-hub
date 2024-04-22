@@ -10,10 +10,11 @@ const (
 )
 
 type Bundle struct {
-	Id         int64
-	Name       string            `gorm:"NOT NULL;uniqueIndex:idx_bundle_name;size:64"`
-	Status     InnerBundleStatus `gorm:"NOT NULL"`
-	Calibrated bool
+	Id          int64
+	Name        string            `gorm:"NOT NULL;uniqueIndex:idx_bundle_name;size:64"`
+	Status      InnerBundleStatus `gorm:"NOT NULL"`
+	Calibrated  bool
+	CreatedTime int64 `gorm:"NOT NULL"`
 }
 
 func (*Bundle) TableName() string {

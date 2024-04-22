@@ -3,9 +3,8 @@ package logging
 import (
 	"os"
 
-	"gopkg.in/natefinch/lumberjack.v2"
-
 	"github.com/op/go-logging"
+	"gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/bnb-chain/blob-hub/config"
 )

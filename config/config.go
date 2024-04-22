@@ -16,17 +16,18 @@ import (
 )
 
 type SyncerConfig struct {
-	BucketName               string        `json:"bucket_name"`                 // BucketName is the identifier of bucket on Greenfield that store blob
-	StartSlot                uint64        `json:"start_slot"`                  // StartSlot is used to init the syncer which slot of beacon chain to synced from, only need to provide once.
-	CreateBundleSlotInterval uint64        `json:"create_bundle_slot_interval"` // CreateBundleSlotInterval defines the number of slot that syncer would assemble blobs and upload to bundle service
-	BundleServiceEndpoints   []string      `json:"bundle_service_endpoints"`    // BundleServiceEndpoints is a list of bundle service address
-	BeaconRPCAddrs           []string      `json:"beacon_rpc_addrs"`            // BeaconRPCAddrs is a list of beacon chain RPC address
-	ETHRPCAddrs              []string      `json:"eth_rpc_addrs"`
-	TempDir                  string        `json:"temp_dir"`    // TempDir is used to store blobs and created bundle
-	PrivateKey               string        `json:"private_key"` // PrivateKey is the key of bucket owner, request to bundle service will be signed by it as well.
-	DBConfig                 DBConfig      `json:"db_config"`
-	MetricsConfig            MetricsConfig `json:"metrics_config"`
-	LogConfig                LogConfig     `json:"log_config"`
+	BucketName                       string        `json:"bucket_name"`                 // BucketName is the identifier of bucket on Greenfield that store blob
+	StartSlot                        uint64        `json:"start_slot"`                  // StartSlot is used to init the syncer which slot of beacon chain to synced from, only need to provide once.
+	CreateBundleSlotInterval         uint64        `json:"create_bundle_slot_interval"` // CreateBundleSlotInterval defines the number of slot that syncer would assemble blobs and upload to bundle service
+	BundleServiceEndpoints           []string      `json:"bundle_service_endpoints"`    // BundleServiceEndpoints is a list of bundle service address
+	BeaconRPCAddrs                   []string      `json:"beacon_rpc_addrs"`            // BeaconRPCAddrs is a list of beacon chain RPC address
+	ETHRPCAddrs                      []string      `json:"eth_rpc_addrs"`
+	TempDir                          string        `json:"temp_dir"`                             // TempDir is used to store blobs and created bundle
+	PrivateKey                       string        `json:"private_key"`                          // PrivateKey is the key of bucket owner, request to bundle service will be signed by it as well.
+	BundleNotSealedReuploadThreshold int64         `json:"bundle_not_sealed_reupload_threshold"` // BundleNotSealedReuploadThreshold for re-uploading a bundle if it cant be sealed within the time threshold.
+	DBConfig                         DBConfig      `json:"db_config"`
+	MetricsConfig                    MetricsConfig `json:"metrics_config"`
+	LogConfig                        LogConfig     `json:"log_config"`
 }
 
 func (s *SyncerConfig) Validate() {
@@ -54,6 +55,10 @@ func (s *SyncerConfig) Validate() {
 	if s.CreateBundleSlotInterval > 30 {
 		panic("create_bundle_slot_interval is supposed less than 20")
 	}
+	if s.BundleNotSealedReuploadThreshold <= 60 {
+		panic("Bundle_not_sealed_reupload_threshold is supposed larger than 60")
+	}
+
 	s.DBConfig.Validate()
 }
 
@@ -62,6 +67,13 @@ func (s *SyncerConfig) GetCreateBundleSlotInterval() uint64 {
 		return DefaultCreateBundleSlotInterval
 	}
 	return s.CreateBundleSlotInterval
+}
+
+func (s *SyncerConfig) GetReUploadBundleThresh() int64 {
+	if s.BundleNotSealedReuploadThreshold == 0 {
+		return DefaultReUploadBundleThreshold
+	}
+	return s.BundleNotSealedReuploadThreshold
 }
 
 type ServerConfig struct {
@@ -118,6 +130,7 @@ func (cfg *DBConfig) Validate() {
 type MetricsConfig struct {
 	Enable      bool   `json:"enable"`
 	HttpAddress string `json:"http_address"`
+	SPEndpoint  string `json:"sp_endpoint"`
 }
 
 type LogConfig struct {

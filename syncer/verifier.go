@@ -22,12 +22,16 @@ import (
 
 var (
 	ErrVerificationFailed = errors.New("verification failed")
-	ErrBundleNotSealed    = errors.New("bundle not sealed yet")
 )
 
-// Verify is used to verify the blob uploaded to bundle service is indeed in Greenfield, and integrity.
+// Verify is used to verify the blob uploaded to bundle service is indeed in Greenfield, and the integrity.
+// In the cases:
+//  1. a recorded finalized bundle lost in bundle service
+//  2. SP can't seal the object (probably won't seal it anymore)
+//  3. verification on a specified blob failed
+//
+// a new bundle should be re-uploaded.
 func (s *BlobSyncer) verify() error {
-
 	var err error
 	verifyBlock, err := s.blobDao.GetEarliestUnverifiedBlock()
 	if err != nil {
@@ -39,17 +43,46 @@ func (s *BlobSyncer) verify() error {
 		return err
 	}
 	bundleName := verifyBlock.BundleName
-	_, bundleEndSlot, err := types.ParseBundleName(bundleName)
+	bundleStartSlot, bundleEndSlot, err := types.ParseBundleName(bundleName)
 	if err != nil {
 		return err
 	}
 	verifyBlockSlot := verifyBlock.Slot
+
+	// check if the bundle has been submitted to bundle service
+	bundle, err := s.blobDao.GetBundle(bundleName)
+	if err != nil {
+		return err
+	}
+	if bundle.Status == db.Finalizing {
+		logging.Logger.Debugf("the bundle has not been submitted to bundle service yet, bundleName=%s", bundleName)
+		time.Sleep(PauseTime)
+		return nil
+	}
+
+	// validate the bundle info at the start slot of a bundle
+	if verifyBlockSlot == bundleStartSlot {
+		// the bundle is recorded finalized in DB, validate the bundle is sealed onchain
+		bundleInfo, err := s.bundleClient.GetBundleInfo(s.getBucketName(), bundleName)
+		if err != nil {
+			logging.Logger.Errorf("failed to get bundle info, bundleName=%s", bundleName)
+			return err
+		}
+		// the bundle is not sealed yet
+		if bundleInfo.Status == BundleStatusFinalized || bundleInfo.Status == BundleStatusCreatedOnChain {
+			if bundle.CreatedTime > 0 && time.Now().Unix()-bundle.CreatedTime > s.config.GetReUploadBundleThresh() {
+				return s.reUploadBundle(bundleName)
+			}
+			return nil
+		}
+	}
+
 	if verifyBlock.BlobCount == 0 {
 		if err = s.blobDao.UpdateBlockStatus(verifyBlockSlot, db.Verified); err != nil {
 			logging.Logger.Errorf("failed to update block status, slot=%d err=%s", verifyBlockSlot, err.Error())
 			return err
 		}
-		if bundleEndSlot == verifyBlockSlot {
+		if verifyBlockSlot == bundleEndSlot {
 			logging.Logger.Debugf("update bundle status to sealed, name=%s , slot %d ", bundleName, verifyBlockSlot)
 			if err = s.blobDao.UpdateBundleStatus(bundleName, db.Sealed); err != nil {
 				logging.Logger.Errorf("failed to update bundle status to sealed, name=%s , slot %d ", bundleName, verifyBlockSlot)
@@ -79,23 +112,8 @@ func (s *BlobSyncer) verify() error {
 		return s.reUploadBundle(bundleName)
 	}
 
-	// check if the bundle has been submitted to bundle service
-	bundle, err := s.blobDao.GetBundle(bundleName)
-	if err != nil {
-		return err
-	}
-
-	if bundle.Status == db.Finalizing {
-		logging.Logger.Debugf("the bundle has not been submitted to bundle service yet, bundleName=%s", bundleName)
-		time.Sleep(PauseTime)
-		return nil
-	}
-
 	err = s.verifyBlobAtSlot(verifyBlockSlot, sideCars, blobMetas, bundleName)
 	if err != nil {
-		if err == external.ErrorBundleNotExist || err == ErrBundleNotSealed {
-			return nil
-		}
 		if err == ErrVerificationFailed {
 			return s.reUploadBundle(bundleName)
 		}
@@ -107,7 +125,7 @@ func (s *BlobSyncer) verify() error {
 	}
 	metrics.VerifiedSlotGauge.Set(float64(verifyBlockSlot))
 	if bundleEndSlot == verifyBlockSlot {
-		logging.Logger.Debugf("update bundle status to sealed, name=%s , slot %d ", bundleName, verifyBlockSlot)
+		logging.Logger.Debugf("update bundle status to sealed, name=%s , slot=%d ", bundleName, verifyBlockSlot)
 		if err = s.blobDao.UpdateBundleStatus(bundleName, db.Sealed); err != nil {
 			logging.Logger.Errorf("failed to update bundle status to sealed, name=%s, slot %d ", bundleName, verifyBlockSlot)
 			return err
@@ -118,15 +136,6 @@ func (s *BlobSyncer) verify() error {
 }
 
 func (s *BlobSyncer) verifyBlobAtSlot(slot uint64, sidecars []*structs.Sidecar, blobMetas []*db.Blob, bundleName string) error {
-	// validate the bundle is sealed
-	bundleInfo, err := s.bundleClient.GetBundleInfo(s.getBucketName(), bundleName)
-	if err != nil {
-		return err
-	}
-	if bundleInfo.Status == BundleStatusFinalized || bundleInfo.Status == BundleStatusCreatedOnChain {
-		return ErrBundleNotSealed
-	}
-
 	for i := 0; i < len(sidecars); i++ {
 		// get blob from bundle service
 		blobFromBundle, err := s.bundleClient.GetObject(s.getBucketName(), bundleName, types.GetBlobName(slot, i))
@@ -181,11 +190,14 @@ func (s *BlobSyncer) reUploadBundle(bundleName string) error {
 	if err := s.blobDao.UpdateBundleStatus(bundleName, db.Deprecated); err != nil {
 		return err
 	}
+
 	newBundleName := bundleName + "_calibrated_" + util.Int64ToString(time.Now().Unix())
 	startSlot, endSlot, err := types.ParseBundleName(bundleName)
 	if err != nil {
 		return err
 	}
+	logging.Logger.Infof("creating new calibrated bundle %s", newBundleName)
+
 	_, err = os.Stat(s.getBundleDir(newBundleName))
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(filepath.Dir(s.getBundleDir(newBundleName)), os.ModePerm)
@@ -194,9 +206,10 @@ func (s *BlobSyncer) reUploadBundle(bundleName string) error {
 		}
 	}
 	if err = s.blobDao.CreateBundle(&db.Bundle{
-		Name:       newBundleName,
-		Status:     db.Finalizing,
-		Calibrated: true,
+		Name:        newBundleName,
+		Status:      db.Finalizing,
+		Calibrated:  true,
+		CreatedTime: time.Now().Unix(),
 	}); err != nil {
 		return err
 	}

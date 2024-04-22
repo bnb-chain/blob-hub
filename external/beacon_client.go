@@ -24,13 +24,12 @@ const (
 )
 
 type BeaconClient struct {
-	hc      *http.Client
-	timeout time.Duration
-	host    string
+	hc   *http.Client
+	host string
 }
 
 // NewBeaconClient returns a new beacon client.
-func NewBeaconClient(host string, timeout time.Duration) (*BeaconClient, error) {
+func NewBeaconClient(host string) (*BeaconClient, error) {
 	transport := &http.Transport{
 		DisableCompression:  true,
 		MaxIdleConnsPerHost: 1000,
@@ -41,8 +40,7 @@ func NewBeaconClient(host string, timeout time.Duration) (*BeaconClient, error) 
 		Timeout:   10 * time.Minute,
 		Transport: transport,
 	}
-	return &BeaconClient{hc: client,
-		timeout: timeout, host: host}, nil
+	return &BeaconClient{hc: client, host: host}, nil
 }
 
 func (c *BeaconClient) GetBlob(ctx context.Context, slotNumber uint64) ([]*structs.Sidecar, error) {
