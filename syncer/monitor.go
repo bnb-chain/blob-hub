@@ -19,7 +19,7 @@ func (s *BlobSyncer) monitorQuota() {
 			logging.Logger.Errorf("failed to get bucket info from SP, err=%s", err.Error())
 			continue
 		}
-		remaining := quota.ReadQuotaSize + quota.SPFreeReadQuotaSize - quota.ReadConsumedSize - quota.FreeConsumedSize
+		remaining := quota.ReadQuotaSize + quota.MonthlyFreeQuota + quota.SPFreeReadQuotaSize - quota.ReadConsumedSize - quota.MonthlyFreeConsumedSize - quota.FreeConsumedSize
 		metrics.BucketRemainingQuotaGauge.Set(float64(remaining))
 		logging.Logger.Infof("remaining quota in bytes is %d", remaining)
 	}
