@@ -11,14 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"gorm.io/gorm"
-
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
 	v1 "github.com/prysmaticlabs/prysm/v5/proto/engine/v1"
 	ethpb "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
 	"github.com/prysmaticlabs/prysm/v5/runtime/version"
+	"gorm.io/gorm"
 
 	"github.com/bnb-chain/blob-hub/config"
 	"github.com/bnb-chain/blob-hub/db"
@@ -32,11 +31,12 @@ import (
 const (
 	BundleStatusFinalized      = 1
 	BundleStatusCreatedOnChain = 2
-	BundleStatusSealedOnChain  = 3 // todo The post verification process should check if a bundle is indeed sealed onchain
+	BundleStatusSealedOnChain  = 3
 
-	LoopSleepTime = 10 * time.Millisecond
-	PauseTime     = 90 * time.Second
-	RPCTimeout    = 10 * time.Second
+	LoopSleepTime        = 10 * time.Millisecond
+	PauseTime            = 90 * time.Second
+	RPCTimeout           = 20 * time.Second
+	MonitorQuotaInterval = 5 * time.Minute
 )
 
 type curBundleDetail struct {
@@ -51,6 +51,7 @@ type BlobSyncer struct {
 	bundleClient *external.BundleClient
 	config       *config.SyncerConfig
 	bundleDetail *curBundleDetail
+	spClient     *external.SPClient
 }
 
 func NewBlobSyncer(
@@ -66,12 +67,20 @@ func NewBlobSyncer(
 		panic(err)
 	}
 	clients := external.NewETHClient(config.ETHRPCAddrs[0], config.BeaconRPCAddrs[0])
-	return &BlobSyncer{
+	bs := &BlobSyncer{
 		blobDao:      blobDao,
 		ethClients:   clients,
 		bundleClient: bundleClient,
 		config:       config,
 	}
+	if config.MetricsConfig.Enable && len(config.MetricsConfig.SPEndpoint) > 0 {
+		spClient, err := external.NewSPClient(config.MetricsConfig.SPEndpoint)
+		if err != nil {
+			panic(err)
+		}
+		bs.spClient = spClient
+	}
+	return bs
 }
 
 func (s *BlobSyncer) StartLoop() {
@@ -101,6 +110,7 @@ func (s *BlobSyncer) StartLoop() {
 			}
 		}
 	}()
+	go s.monitorQuota()
 }
 
 func (s *BlobSyncer) sync() error {
@@ -238,8 +248,9 @@ func (s *BlobSyncer) createLocalBundleDir() error {
 	}
 	return s.blobDao.CreateBundle(
 		&db.Bundle{
-			Name:   s.bundleDetail.name,
-			Status: db.Finalizing,
+			Name:        s.bundleDetail.name,
+			Status:      db.Finalizing,
+			CreatedTime: time.Now().Unix(),
 		})
 }
 func (s *BlobSyncer) finalizeBundle(bundleName, bundleDir, bundleFilePath string) error {
@@ -366,7 +377,7 @@ func (s *BlobSyncer) ToBlockAndBlobs(blockResp *structs.GetBlockV2Response, blob
 		defer cancel()
 		header, err := s.ethClients.BeaconClient.GetHeader(ctx, slot)
 		if err != nil {
-			logging.Logger.Errorf("failed to get header, err=%s", header.Data.Root, err.Error())
+			logging.Logger.Errorf("failed to get header, slot=%d, err=%s", slot, err.Error())
 			return nil, nil, err
 		}
 		rootBz, err := hexutil.Decode(header.Data.Root)

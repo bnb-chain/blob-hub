@@ -11,4 +11,7 @@ const (
 	EnvVarPrivateKey     = "PRIVATE_KEY"
 
 	DefaultCreateBundleSlotInterval = 20
+
+	DefaultReUploadBundleThreshold = 3600 // in second
+
 )

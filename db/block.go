@@ -21,7 +21,7 @@ type Block struct {
 	BlobCount     int
 
 	BundleName string `gorm:"NOT NULL"`
-	Status     Status
+	Status     Status `gorm:"index:idx_block_status"`
 }
 
 func (*Block) TableName() string {

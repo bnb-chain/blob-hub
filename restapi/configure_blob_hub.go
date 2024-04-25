@@ -7,18 +7,18 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-openapi/errors"
+	"github.com/go-openapi/runtime"
+	"github.com/go-openapi/swag"
+
 	"github.com/bnb-chain/blob-hub/cache"
 	"github.com/bnb-chain/blob-hub/config"
 	syncerdb "github.com/bnb-chain/blob-hub/db"
 	"github.com/bnb-chain/blob-hub/external"
 	"github.com/bnb-chain/blob-hub/restapi/handlers"
-	"github.com/bnb-chain/blob-hub/service"
-	"github.com/go-openapi/errors"
-	"github.com/go-openapi/runtime"
-	"github.com/go-openapi/swag"
-
 	"github.com/bnb-chain/blob-hub/restapi/operations"
 	"github.com/bnb-chain/blob-hub/restapi/operations/blob"
+	"github.com/bnb-chain/blob-hub/service"
 )
 
 //go:generate swagger generate server --target ../../blob-syncer --name BlobHub --spec ../swagger.yaml --principal interface{}
