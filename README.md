@@ -19,21 +19,13 @@ the blob-hub service offers APIs that enable users to access and retrieve histor
 | Network  | Endpoint    | Bucket      |
 |----------|-------------|-------------|
 | Ethereum | https://gnfd-blobhub.bnbchain.org | [ethereum-mainnet-blobs](https://greenfieldscan.com/bucket/0x00000000000000000000000000000000000000000000000000000000000019e7) |
-| BSC      | coming soon | coming soon |
+| BSC | https://gnfd-blobhub-bsc.bnbchain.org | [bsc-mainnet-blobs](https://greenfieldscan.com/bucket/0x0000000000000000000000000000000000000000000000000000000000007681) |
 
-Besides the mainnet setting up, we provide a Greenfield testnet(where data could be lost) endpoints:
+## Blob Hub API
 
-| Network  | Endpoint                                  | Bucket                                                                                                                        |
-|----------|-------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
-| Ethereum | https://gnfd-blobhub-testnet.bnbchain.org | [ethereum-blob](https://testnet.greenfieldscan.com/bucket/0x0000000000000000000000000000000000000000000000000000000000003b57) |
+The Blob hub server provides eth compatible API to query historical blob
 
-
-
-## Blob Syncer API
-
-The Blob syncer server provides eth compatible API to query historical blob
-
-### Get blob sidecars.
+### Get Ethereum blob sidecars.
 
 * GET /eth/v1/beacon/blob_sidecars/{block_id}?indices={indices}
 
@@ -86,6 +78,54 @@ The Blob syncer server provides eth compatible API to query historical blob
 } 
 ```
 
+### Get BSC blob sidecars.
+
+* POST https://gnfd-blobhub-bsc.bnbchain.org/
+
+request body example, the params should specify the block num
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "eth_getBlobSidecars",
+  "params": [
+  "0x260B4F8"
+  ],
+  "id": 1
+}
+```
+
+response
+```json
+  {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "result": [
+      {
+        "blobSidecar": {
+          "blobs": [
+            "0x230001fbfc0......",
+            "0x230001fbfc0......",
+            "0x230001fbfc0......"
+          ],
+          "commitments": [
+            "0x8dc46b688da90f6c4e73f45edf45b469af02b08614929724c47561096144dccda42d750a54207056970e4fb594382d0d",
+            "0x88ca84e6120edbc3501f38d5d33fcef72e4b9f93a87adcd0f01cbed75a502ba4904b44f0f4e90a32a60deaff16ca72fd",
+            "0x8c5bac684f3ec774cea2e1069d10f5b572d06f1a0e22e935760ae6d781056a29ad39d97e09eb21c4e38433b7975ed809"
+          ],
+          "proofs": [
+            "0x83580500abf93afb6e3d5b8c8f95ecefa8da6f6c4fa49b35dc8bf526c58c579cf9958f68d7da3dcb76e5bde536bf396b",
+            "0xb70a87a4747158024d86a7b7a6bf946fd0c661717083498c9159e7d693ff1fece43157458318a412575ecc66aa17072b",
+            "0x94c5a6e875936674265cd3d46d7a2af2f1600b85042f363d97c5eb8501fdc046268fddb3de85c9c7bd8c9b3b64ae416f"
+          ]
+        },
+        "blockNumber": "0x260B4F8",
+        "txIndex": "0x59",
+        "txHash": "6f357e3162706ce7965f41eb17bd3711dcc4ae1fb3305c54efaf369efc1ec100"
+        }
+      ]
+  }
+```
+
 ## Access to Blob Data Directly in Greenfield
 
 In scenarios where the Bundle Service is inaccessible, direct access to blob data stored in Greenfield may be necessary, as blobs are consolidated into a bundle object.
@@ -103,7 +143,7 @@ The [bundle SDK](https://github.com/bnb-chain/greenfield-bundle-sdk) offers comm
 git submodule update --init --recursive
 cd bundle-sdk && make build
 
-./build/bundler download -bucket ethereum-blob -object blobs_s8864048_e8864077 -chain-id greenfield_5600-1 -rpc-url https://gnfd-testnet-fullnode-tendermint-us.bnbchain.org:443  -output ./tmp
+./build/bundler download -bucket ethereum-mainnet-blobs -object blobs_s9374167_e9374196 -chain-id greenfield_1017-1 -rpc-url https://greenfield-chain.bnbchain.org:443  -output ./tmp
 ```
 
 Once the bundle is downloaded and extracted, all original blob files can be found within the `tmp` directory.
@@ -136,7 +176,7 @@ Request a bundle account from the Bundle Service, you need to grant the bundle a
 can create object behave of your account.
 
 ```shell
-curl -X POST  https://gnfd-testnet-bundle.nodereal.io/v1/bundlerAccount/0xf74d8897D8BeafDF4b766E19A62078DE84570656
+curl -X POST  https://gnfd-mainnet-bundle.nodereal.io/v1/bundlerAccount/0xf74d8897D8BeafDF4b766E19A62078DE84570656
 
 {"address":"0x4605BFc98E0a5EA63D9D5a4a1Df549732a6963f3"}
 ```
@@ -210,28 +250,32 @@ make build_server
 
 ## Run
 
-### Run the Blob Syncer instance
+### Run the Blob Syncer instance for Ethereum mainnet
 
 ```shell
 ./build/syncer --config-path config/local/config-syncer.json
 ```
 
+config example:
+
 ```json
 {
+  "chain": "ETH",
   "bucket_name": "your-bucket",
-  "start_slot": 8783000,
-  "create_bundle_slot_interval": 10,
+  "start_slot_or_block": 8783000,
+  "create_bundle_slot_or_block_interval": 10,
   "beacon_rpc_addrs": [
-  "https://eth2-beacon-mainnet.nodereal.io"
+    "https://eth2-beacon-mainnet.nodereal.io"
   ],
   "bundle_service_endpoints": [
-  "https://gnfd-testnet-bundle.nodereal.io"
+    "https://gnfd-mainnet-bundle.nodereal.io"
   ],
-  "eth_rpc_addrs": [
-  "https://eth-mainnet.nodereal.io"
+  "rpc_addrs": [
+    "https://eth-mainnet.nodereal.io"
   ],
   "temp_dir": "temp",
   "private_key": "0x....",
+  "bundle_not_sealed_reupload_threshold": 3600,
   "db_config": {
     "dialect": "mysql",
     "username": "root",
@@ -243,6 +287,7 @@ make build_server
   "metrics_config": {
     "enable": true,
     "http_address": ""
+    "sp_endpoint": "https://greenfield-sp.nodereal.io"
   },
   "log_config": {
     "level": "DEBUG",
@@ -255,6 +300,50 @@ make build_server
     "compress": false
   }
 }
+```
+
+### Run the Blob Syncer instance for BSC mainnet
+
+config example:
+```json
+{
+  "chain": "BSC",
+  "bucket_name": "your-bucket",
+  "start_slot_or_block": 39769787,
+  "create_bundle_slot_or_block_interval": 200,
+  "bundle_service_endpoints": [
+    "https://gnfd-mainnet-bundle.nodereal.io"
+  ],
+  "rpc_addrs": [
+    "https://bsc-mainnet.nodereal.io/"
+  ],
+  "temp_dir": "temp",
+  "private_key": "0x....",
+  "bundle_not_sealed_reupload_threshold": 3600,
+  "db_config": {
+    "dialect": "mysql",
+    "username": "root",
+    "password": "pass",
+    "url": "/blob-hub?charset=utf8&parseTime=True&loc=Local",
+    "max_idle_conns": 10,
+    "max_open_conns": 100
+  },
+  "metrics_config": {
+    "enable": true,
+    "http_address": ""
+    "sp_endpoint": "https://greenfield-sp.nodereal.io"
+  },
+  "log_config": {
+    "level": "DEBUG",
+    "filename": "",
+    "max_file_size_in_mb": 0,
+    "max_backups_of_log_files": 0,
+    "max_age_to_retain_log_files_in_days": 0,
+    "use_console_logger": true,
+    "use_file_logger": false,
+    "compress": false
+    }
+  }
 ```
 
 ### Run the api server
