@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/bnb-chain/blob-hub/types"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/go-openapi/runtime/middleware"
 
@@ -12,8 +13,6 @@ import (
 	"github.com/bnb-chain/blob-hub/service"
 	"github.com/bnb-chain/blob-hub/util"
 )
-
-const rootLength = 32
 
 func HandleGetBlobSidecars() func(params blob.GetBlobSidecarsByBlockNumParams) middleware.Responder {
 	return func(params blob.GetBlobSidecarsByBlockNumParams) middleware.Responder {
@@ -41,7 +40,7 @@ func HandleGetBlobSidecars() func(params blob.GetBlobSidecarsByBlockNumParams) m
 
 			root, err = hexutil.Decode(blockID)
 			if err == nil {
-				if len(root) != rootLength {
+				if len(root) != types.RootLength {
 					return blob.NewGetBlobSidecarsByBlockNumBadRequest().WithPayload(service.BadRequestWithError(fmt.Errorf("invalid block root of length %d", len(root))))
 				}
 				sidecars, err = service.BlobSvc.GetBlobSidecarsByRoot(hex.EncodeToString(root), indicesInx)

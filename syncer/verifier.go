@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -65,8 +66,26 @@ func (s *BlobSyncer) verify() error {
 		// the bundle is recorded finalized in DB, validate the bundle is sealed onchain
 		bundleInfo, err := s.bundleClient.GetBundleInfo(s.getBucketName(), bundleName)
 		if err != nil {
-			logging.Logger.Errorf("failed to get bundle info, bundleName=%s", bundleName)
-			return err
+			if err != external.ErrorBundleNotExist {
+				logging.Logger.Errorf("failed to get bundle info, bundleName=%s", bundleName)
+				return err
+			}
+
+			// verify if there are no blobs within the range
+			blobs, err := s.blobDao.GetBlobBetweenSlots(bundleStartSlot, bundleEndSlot)
+			if err != nil {
+				return err
+			}
+			if len(blobs) != 0 {
+				return fmt.Errorf("%d blobs within slot[%d, %d] not found in bundle service", len(blobs), bundleStartSlot, bundleEndSlot)
+			}
+			if err = s.blobDao.UpdateBlocksStatus(bundleEndSlot, bundleEndSlot, db.Verified); err != nil {
+				return err
+			}
+			if err = s.blobDao.UpdateBundleStatus(bundleName, db.Sealed); err != nil {
+				return err
+			}
+			return nil
 		}
 		// the bundle is not sealed yet
 		if bundleInfo.Status == BundleStatusFinalized || bundleInfo.Status == BundleStatusCreatedOnChain {

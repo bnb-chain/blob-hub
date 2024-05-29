@@ -11,13 +11,14 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
 	v1 "github.com/prysmaticlabs/prysm/v5/proto/engine/v1"
 	ethpb "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
 	"github.com/prysmaticlabs/prysm/v5/runtime/version"
-	"gorm.io/gorm"
 
 	"github.com/bnb-chain/blob-hub/config"
 	"github.com/bnb-chain/blob-hub/db"

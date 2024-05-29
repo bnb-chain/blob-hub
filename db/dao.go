@@ -83,6 +83,7 @@ func (d *BlobSvcDB) UpdateBlocksStatus(startSlot, endSlot uint64, status Status)
 type BlobDB interface {
 	GetBlobBySlot(slot uint64) ([]*Blob, error)
 	GetBlobBySlotAndIndices(slot uint64, indices []int64) ([]*Blob, error)
+	GetBlobBetweenSlots(startSlot, endSlot uint64) ([]*Blob, error)
 }
 
 func (d *BlobSvcDB) GetBlobBySlot(slot uint64) ([]*Blob, error) {
@@ -96,6 +97,14 @@ func (d *BlobSvcDB) GetBlobBySlot(slot uint64) ([]*Blob, error) {
 func (d *BlobSvcDB) GetBlobBySlotAndIndices(slot uint64, indices []int64) ([]*Blob, error) {
 	blobs := make([]*Blob, 0)
 	if err := d.db.Where("slot = ? and idx in (?)", slot, indices).Order("idx asc").Find(&blobs).Error; err != nil {
+		return blobs, err
+	}
+	return blobs, nil
+}
+
+func (d *BlobSvcDB) GetBlobBetweenSlots(startSlot, endSlot uint64) ([]*Blob, error) {
+	blobs := make([]*Blob, 0)
+	if err := d.db.Where("slot >= ? and slot <= ?", startSlot, endSlot).Order("idx asc").Find(&blobs).Error; err != nil {
 		return blobs, err
 	}
 	return blobs, nil

@@ -3,10 +3,17 @@
 package restapi
 
 import (
+	"context"
 	"crypto/tls"
+	"fmt"
+	"log"
+	"net"
 	"net/http"
 	"os"
 
+	"google.golang.org/grpc"
+
+	"github.com/bnb-chain/blob-hub/client"
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/swag"
@@ -15,10 +22,13 @@ import (
 	"github.com/bnb-chain/blob-hub/config"
 	syncerdb "github.com/bnb-chain/blob-hub/db"
 	"github.com/bnb-chain/blob-hub/external"
+	blobproto "github.com/bnb-chain/blob-hub/proto"
 	"github.com/bnb-chain/blob-hub/restapi/handlers"
 	"github.com/bnb-chain/blob-hub/restapi/operations"
 	"github.com/bnb-chain/blob-hub/restapi/operations/blob"
 	"github.com/bnb-chain/blob-hub/service"
+
+	grpcruntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
 
 //go:generate swagger generate server --target ../../blob-syncer --name BlobHub --spec ../swagger.yaml --principal interface{}
@@ -57,6 +67,8 @@ func configureAPI(api *operations.BlobHubAPI) http.Handler {
 	api.PreServerShutdown = func() {}
 
 	api.ServerShutdown = func() {}
+
+	go grpcServer()
 
 	return setupGlobalMiddleware(api.Serve(setupMiddlewares))
 }
@@ -103,6 +115,49 @@ func configureServer(s *http.Server, scheme, addr string) {
 	}
 	service.BlobSvc = service.NewBlobService(blobDB, bundleClient, cacheSvc, cfg)
 
+}
+
+func grpcServer() {
+	lis, err := net.Listen("tcp", "0.0.0.0:9000")
+	if err != nil {
+		log.Fatalln("Failed to listen:", err)
+	}
+
+	// Create a gRPC server object
+	s := grpc.NewServer()
+	// Attach the Blob service to the server
+	blobproto.RegisterBlobServiceServer(s, &client.BlobServer{})
+	// Serve gRPC server
+	log.Println("Serving gRPC on 0.0.0.0:9000")
+	go func() {
+		log.Fatalln(s.Serve(lis))
+	}()
+
+	maxMsgSize := 1024 * 1024 * 20
+	// Create a client connection to the gRPC server we just started
+	// This is where the gRPC-Gateway proxies the requests
+	conn, err := grpc.DialContext(
+		context.Background(),
+		"0.0.0.0:8080",
+		grpc.WithBlock(),
+		grpc.WithInsecure(),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize), grpc.MaxCallSendMsgSize(maxMsgSize)),
+	)
+	if err != nil {
+		log.Fatalln("Failed to dial server:", err)
+	}
+	gwmux := grpcruntime.NewServeMux()
+	// Register User Service
+	err = blobproto.RegisterBlobServiceHandler(context.Background(), gwmux, conn)
+	if err != nil {
+		log.Fatalln("Failed to register gateway:", err)
+	}
+	gwServer := &http.Server{
+		Addr:    fmt.Sprintf(":%s", os.Getenv("server_port")),
+		Handler: gwmux,
+	}
+	log.Println(fmt.Sprintf("Serving gRPC-Gateway on %s:%s", os.Getenv("server_host"), os.Getenv("server_port")))
+	log.Fatalln(gwServer.ListenAndServe())
 }
 
 // The middleware configuration is for the handler executors. These do not apply to the swagger.json document.
