@@ -52,6 +52,12 @@ function all() {
     echo "created bucket and granted permission"
 }
 
+function updateQuota() {
+  prepare
+  ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt bucket update --chargedQuota 139586437120 gnfd://${BUCKET_NAME}
+}
+
+
 CMD=$1
 case ${CMD} in
 --create_bucket)
@@ -59,6 +65,9 @@ case ${CMD} in
   ;;
 --grant)
   grant
+  ;;
+--updateQuota)
+  updateQuota
   ;;
 --all)
   all
