@@ -1,6 +1,8 @@
 module github.com/bnb-chain/blob-hub
 
-go 1.20
+go 1.21
+
+toolchain go1.22.4
 
 require (
 	github.com/bnb-chain/greenfield-bundle-sdk v1.1.0

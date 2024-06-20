@@ -11,10 +11,11 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/bnb-chain/blob-hub/external/cmn"
+	"github.com/bnb-chain/blob-hub/external/eth"
 	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
 
 	"github.com/bnb-chain/blob-hub/db"
-	"github.com/bnb-chain/blob-hub/external"
 	"github.com/bnb-chain/blob-hub/logging"
 	"github.com/bnb-chain/blob-hub/metrics"
 	"github.com/bnb-chain/blob-hub/types"
@@ -33,22 +34,31 @@ var (
 //
 // a new bundle should be re-uploaded.
 func (s *BlobSyncer) verify() error {
-	var err error
+	var (
+		err       error
+		sleepTime time.Duration
+	)
+	if s.BSCChain() {
+		sleepTime = BSCPauseTime
+	} else {
+		sleepTime = ETHPauseTime
+	}
+
 	verifyBlock, err := s.blobDao.GetEarliestUnverifiedBlock()
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			logging.Logger.Debugf("found no unverified block in DB")
-			time.Sleep(PauseTime)
+			time.Sleep(sleepTime)
 			return nil
 		}
 		return err
 	}
 	bundleName := verifyBlock.BundleName
-	bundleStartSlot, bundleEndSlot, err := types.ParseBundleName(bundleName)
+	bundleStartBlockID, bundleEndBlockID, err := types.ParseBundleName(bundleName)
 	if err != nil {
 		return err
 	}
-	verifyBlockSlot := verifyBlock.Slot
+	verifyBlockID := verifyBlock.Slot
 
 	// check if the bundle has been submitted to bundle service
 	bundle, err := s.blobDao.GetBundle(bundleName)
@@ -57,29 +67,29 @@ func (s *BlobSyncer) verify() error {
 	}
 	if bundle.Status == db.Finalizing {
 		logging.Logger.Debugf("the bundle has not been submitted to bundle service yet, bundleName=%s", bundleName)
-		time.Sleep(PauseTime)
+		time.Sleep(sleepTime)
 		return nil
 	}
 
 	// validate the bundle info at the start slot of a bundle
-	if verifyBlockSlot == bundleStartSlot {
+	if verifyBlockID == bundleStartBlockID {
 		// the bundle is recorded finalized in DB, validate the bundle is sealed onchain
 		bundleInfo, err := s.bundleClient.GetBundleInfo(s.getBucketName(), bundleName)
 		if err != nil {
-			if err != external.ErrorBundleNotExist {
+			if err != cmn.ErrorBundleNotExist {
 				logging.Logger.Errorf("failed to get bundle info, bundleName=%s", bundleName)
 				return err
 			}
 
 			// verify if there are no blobs within the range
-			blobs, err := s.blobDao.GetBlobBetweenSlots(bundleStartSlot, bundleEndSlot)
+			blobs, err := s.blobDao.GetBlobBetweenBlocks(bundleStartBlockID, bundleEndBlockID)
 			if err != nil {
 				return err
 			}
 			if len(blobs) != 0 {
-				return fmt.Errorf("%d blobs within slot[%d, %d] not found in bundle service", len(blobs), bundleStartSlot, bundleEndSlot)
+				return fmt.Errorf("%d blobs within block_id[%d, %d] not found in bundle service", len(blobs), bundleStartBlockID, bundleEndBlockID)
 			}
-			if err = s.blobDao.UpdateBlocksStatus(bundleEndSlot, bundleEndSlot, db.Verified); err != nil {
+			if err = s.blobDao.UpdateBlocksStatus(bundleEndBlockID, bundleEndBlockID, db.Verified); err != nil {
 				return err
 			}
 			if err = s.blobDao.UpdateBundleStatus(bundleName, db.Sealed); err != nil {
@@ -97,70 +107,70 @@ func (s *BlobSyncer) verify() error {
 	}
 
 	if verifyBlock.BlobCount == 0 {
-		if err = s.blobDao.UpdateBlockStatus(verifyBlockSlot, db.Verified); err != nil {
-			logging.Logger.Errorf("failed to update block status, slot=%d err=%s", verifyBlockSlot, err.Error())
+		if err = s.blobDao.UpdateBlockStatus(verifyBlockID, db.Verified); err != nil {
+			logging.Logger.Errorf("failed to update block status, block_id=%d err=%s", verifyBlockID, err.Error())
 			return err
 		}
-		if verifyBlockSlot == bundleEndSlot {
-			logging.Logger.Debugf("update bundle status to sealed, name=%s , slot %d ", bundleName, verifyBlockSlot)
+		if verifyBlockID == bundleEndBlockID {
+			logging.Logger.Debugf("update bundle status to sealed, name=%s , block_id %d ", bundleName, verifyBlockID)
 			if err = s.blobDao.UpdateBundleStatus(bundleName, db.Sealed); err != nil {
-				logging.Logger.Errorf("failed to update bundle status to sealed, name=%s , slot %d ", bundleName, verifyBlockSlot)
+				logging.Logger.Errorf("failed to update bundle status to sealed, name=%s , block_id %d ", bundleName, verifyBlockID)
 				return err
 			}
 		}
 		return nil
 	}
 
-	// get blob from beacon chain again
+	// get blob from beacon chain or BSC again
 	ctx, cancel := context.WithTimeout(context.Background(), RPCTimeout)
 	defer cancel()
-	sideCars, err := s.ethClients.BeaconClient.GetBlob(ctx, verifyBlockSlot)
+	sideCars, err := s.client.GetBlob(ctx, verifyBlockID)
 	if err != nil {
-		logging.Logger.Errorf("failed to get blob at slot=%d, err=%s", verifyBlockSlot, err.Error())
+		logging.Logger.Errorf("failed to get blob at block_id=%d, err=%s", verifyBlockID, err.Error())
 		return err
 	}
 
 	// get blob meta from DB
-	blobMetas, err := s.blobDao.GetBlobBySlot(verifyBlockSlot)
+	blobMetas, err := s.blobDao.GetBlobByBlockID(verifyBlockID)
 	if err != nil {
 		return err
 	}
 
 	if len(blobMetas) != len(sideCars) {
-		logging.Logger.Errorf("found blob number mismatch at slot=%d, bundleName=%s", verifyBlockSlot, bundleName)
+		logging.Logger.Errorf("found blob number mismatch at block_id=%d, bundleName=%s, expected=%d, actual=%d", verifyBlockID, bundleName, len(sideCars), len(blobMetas))
 		return s.reUploadBundle(bundleName)
 	}
 
-	err = s.verifyBlobAtSlot(verifyBlockSlot, sideCars, blobMetas, bundleName)
+	err = s.verifyBlob(verifyBlockID, sideCars, blobMetas, bundleName)
 	if err != nil {
 		if err == ErrVerificationFailed {
 			return s.reUploadBundle(bundleName)
 		}
 		return err
 	}
-	if err = s.blobDao.UpdateBlockStatus(verifyBlockSlot, db.Verified); err != nil {
-		logging.Logger.Errorf("failed to update block status to verified, slot=%d err=%s", verifyBlockSlot, err.Error())
+	if err = s.blobDao.UpdateBlockStatus(verifyBlockID, db.Verified); err != nil {
+		logging.Logger.Errorf("failed to update block status to verified, block_id=%d err=%s", verifyBlockID, err.Error())
 		return err
 	}
-	metrics.VerifiedSlotGauge.Set(float64(verifyBlockSlot))
-	if bundleEndSlot == verifyBlockSlot {
-		logging.Logger.Debugf("update bundle status to sealed, name=%s , slot=%d ", bundleName, verifyBlockSlot)
+	metrics.VerifiedBlockIDGauge.Set(float64(verifyBlockID))
+	if bundleEndBlockID == verifyBlockID {
+		logging.Logger.Debugf("update bundle status to sealed, name=%s , block_id=%d ", bundleName, verifyBlockID)
 		if err = s.blobDao.UpdateBundleStatus(bundleName, db.Sealed); err != nil {
-			logging.Logger.Errorf("failed to update bundle status to sealed, name=%s, slot %d ", bundleName, verifyBlockSlot)
+			logging.Logger.Errorf("failed to update bundle status to sealed, name=%s, block_id %d ", bundleName, verifyBlockID)
 			return err
 		}
 	}
-	logging.Logger.Infof("successfully verify at block slot %d ", verifyBlockSlot)
+	logging.Logger.Infof("successfully verify at block block_id=%d ", verifyBlockID)
 	return nil
 }
 
-func (s *BlobSyncer) verifyBlobAtSlot(slot uint64, sidecars []*structs.Sidecar, blobMetas []*db.Blob, bundleName string) error {
+func (s *BlobSyncer) verifyBlob(blockID uint64, sidecars []*structs.Sidecar, blobMetas []*db.Blob, bundleName string) error {
 	for i := 0; i < len(sidecars); i++ {
 		// get blob from bundle service
-		blobFromBundle, err := s.bundleClient.GetObject(s.getBucketName(), bundleName, types.GetBlobName(slot, i))
+		blobFromBundle, err := s.bundleClient.GetObject(s.getBucketName(), bundleName, types.GetBlobName(blockID, i))
 		if err != nil {
-			if err == external.ErrorBundleObjectNotExist {
-				logging.Logger.Errorf("the bundle object not found in bundle service, object=%s", types.GetBlobName(slot, i))
+			if err == cmn.ErrorBundleObjectNotExist {
+				logging.Logger.Errorf("the bundle object not found in bundle service, object=%s", types.GetBlobName(blockID, i))
 				return ErrVerificationFailed
 			}
 			return err
@@ -211,7 +221,7 @@ func (s *BlobSyncer) reUploadBundle(bundleName string) error {
 	}
 
 	newBundleName := bundleName + "_calibrated_" + util.Int64ToString(time.Now().Unix())
-	startSlot, endSlot, err := types.ParseBundleName(bundleName)
+	startBlockID, endBlockID, err := types.ParseBundleName(bundleName)
 	if err != nil {
 		return err
 	}
@@ -232,32 +242,38 @@ func (s *BlobSyncer) reUploadBundle(bundleName string) error {
 	}); err != nil {
 		return err
 	}
-	for slot := startSlot; slot <= endSlot; slot++ {
+	for bi := startBlockID; bi <= endBlockID; bi++ {
 		ctx, cancel := context.WithTimeout(context.Background(), RPCTimeout)
 		defer cancel()
-		sideCars, err := s.ethClients.BeaconClient.GetBlob(ctx, slot)
+		sideCars, err := s.client.GetBlob(ctx, bi)
 		if err != nil {
 			return err
 		}
-		if err = s.writeBlobToFile(slot, newBundleName, sideCars); err != nil {
+		if err = s.writeBlobToFile(bi, newBundleName, sideCars); err != nil {
 			return err
 		}
-		block, err := s.ethClients.BeaconClient.GetBlock(ctx, slot)
-		if err != nil {
-			if err == external.ErrBlockNotFound {
-				continue
+
+		// not needed by BSC
+		var block *structs.GetBlockV2Response
+		if s.ETHChain() {
+			block, err = s.client.GetBeaconBlock(ctx, bi)
+			if err != nil {
+				if err == eth.ErrBlockNotFound {
+					continue
+				}
+				return err
 			}
-			return err
 		}
-		blockMeta, err := s.blobDao.GetBlock(slot)
+
+		blockMeta, err := s.blobDao.GetBlock(bi)
 		if err != nil {
 			return err
 		}
-		blobMetas, err := s.blobDao.GetBlobBySlot(slot)
+		blobMetas, err := s.blobDao.GetBlobByBlockID(bi)
 		if err != nil {
 			return err
 		}
-		blockToSave, blobToSave, err := s.ToBlockAndBlobs(block, sideCars, slot, newBundleName)
+		blockToSave, blobToSave, err := s.toBlockAndBlobs(block, sideCars, bi, newBundleName)
 		if err != nil {
 			return err
 		}
@@ -272,7 +288,7 @@ func (s *BlobSyncer) reUploadBundle(bundleName string) error {
 			logging.Logger.Errorf("failed to save block(h=%d) and Blob(count=%d), err=%s", blockToSave.Slot, len(blobToSave), err.Error())
 			return err
 		}
-		logging.Logger.Infof("save calibrated block(slot=%d) and blobs(num=%d) to DB \n", slot, len(blobToSave))
+		logging.Logger.Infof("save calibrated block(block_id=%d) and blobs(num=%d) to DB \n", bi, len(blobToSave))
 	}
 	if err = s.finalizeBundle(newBundleName, s.getBundleDir(newBundleName), s.getBundleFilePath(newBundleName)); err != nil {
 		logging.Logger.Errorf("failed to finalized bundle, name=%s, err=%s", newBundleName, err.Error())

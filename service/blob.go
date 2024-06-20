@@ -6,7 +6,7 @@ import (
 	"github.com/bnb-chain/blob-hub/cache"
 	"github.com/bnb-chain/blob-hub/config"
 	"github.com/bnb-chain/blob-hub/db"
-	"github.com/bnb-chain/blob-hub/external"
+	"github.com/bnb-chain/blob-hub/external/cmn"
 	"github.com/bnb-chain/blob-hub/models"
 	"github.com/bnb-chain/blob-hub/util"
 )
@@ -20,12 +20,12 @@ type Blob interface {
 
 type BlobService struct {
 	blobDB       db.BlobDao
-	bundleClient *external.BundleClient
+	bundleClient *cmn.BundleClient
 	cacheService cache.Cache
 	config       *config.ServerConfig
 }
 
-func NewBlobService(blobDB db.BlobDao, bundleClient *external.BundleClient, cache cache.Cache, config *config.ServerConfig) Blob {
+func NewBlobService(blobDB db.BlobDao, bundleClient *cmn.BundleClient, cache cache.Cache, config *config.ServerConfig) Blob {
 	return &BlobService{
 		blobDB:       blobDB,
 		bundleClient: bundleClient,
@@ -59,12 +59,12 @@ func (b BlobService) GetBlobSidecarsBySlot(slot uint64, indices []int64) ([]*mod
 
 	var blobMetas []*db.Blob
 	if len(indices) == 0 {
-		blobMetas, err = b.blobDB.GetBlobBySlot(slot)
+		blobMetas, err = b.blobDB.GetBlobByBlockID(slot)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		blobMetas, err = b.blobDB.GetBlobBySlotAndIndices(slot, indices)
+		blobMetas, err = b.blobDB.GetBlobByBlockIDAndIndices(slot, indices)
 		if err != nil {
 			return nil, err
 		}

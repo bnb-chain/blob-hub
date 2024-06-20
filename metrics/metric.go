@@ -11,12 +11,12 @@ import (
 )
 
 var (
-	SyncedSlotGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+	SyncedBlockIDGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "synced_beacon_slot",
 		Help: "Synced slot number, all blobs have been uploaded to bundle service.",
 	})
 
-	VerifiedSlotGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+	VerifiedBlockIDGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "verified_beacon_slot",
 		Help: "Verified slot number, all blobs have been verified against the bundle service.",
 	})
@@ -27,8 +27,8 @@ var (
 	})
 
 	MetricsItems = []prometheus.Collector{
-		SyncedSlotGauge,
-		VerifiedSlotGauge,
+		SyncedBlockIDGauge,
+		VerifiedBlockIDGauge,
 		BucketRemainingQuotaGauge,
 	}
 )

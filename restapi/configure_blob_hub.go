@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/bnb-chain/blob-hub/client"
+	"github.com/bnb-chain/blob-hub/external/cmn"
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/swag"
@@ -21,7 +22,6 @@ import (
 	"github.com/bnb-chain/blob-hub/cache"
 	"github.com/bnb-chain/blob-hub/config"
 	syncerdb "github.com/bnb-chain/blob-hub/db"
-	"github.com/bnb-chain/blob-hub/external"
 	blobproto "github.com/bnb-chain/blob-hub/proto"
 	"github.com/bnb-chain/blob-hub/restapi/handlers"
 	"github.com/bnb-chain/blob-hub/restapi/operations"
@@ -99,7 +99,7 @@ func configureServer(s *http.Server, scheme, addr string) {
 	cfg.Validate()
 	db := config.InitDBWithConfig(&cfg.DBConfig, false)
 	blobDB := syncerdb.NewBlobSvcDB(db)
-	bundleClient, err := external.NewBundleClient(cfg.BundleServiceEndpoints[0])
+	bundleClient, err := cmn.NewBundleClient(cfg.BundleServiceEndpoints[0])
 	if err != nil {
 		panic(err)
 	}
