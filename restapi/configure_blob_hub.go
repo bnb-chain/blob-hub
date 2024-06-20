@@ -140,7 +140,7 @@ func grpcServer() {
 		context.Background(),
 		"0.0.0.0:8080",
 		grpc.WithBlock(),
-		grpc.WithInsecure(),
+		grpc.WithInsecure(), // nolint
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize), grpc.MaxCallSendMsgSize(maxMsgSize)),
 	)
 	if err != nil {
@@ -156,7 +156,7 @@ func grpcServer() {
 		Addr:    fmt.Sprintf(":%s", os.Getenv("server_port")),
 		Handler: gwmux,
 	}
-	log.Println(fmt.Sprintf("Serving gRPC-Gateway on %s:%s", os.Getenv("server_host"), os.Getenv("server_port")))
+	log.Printf(fmt.Sprintf("Serving gRPC-Gateway on %s:%s", os.Getenv("server_host"), os.Getenv("server_port"))) // nolint
 	log.Fatalln(gwServer.ListenAndServe())
 }
 
