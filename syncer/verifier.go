@@ -9,18 +9,19 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
 	"gorm.io/gorm"
 
+	"github.com/bnb-chain/blob-hub/db"
 	"github.com/bnb-chain/blob-hub/external/cmn"
 	"github.com/bnb-chain/blob-hub/external/eth"
-	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
-
-	"github.com/bnb-chain/blob-hub/db"
 	"github.com/bnb-chain/blob-hub/logging"
 	"github.com/bnb-chain/blob-hub/metrics"
 	"github.com/bnb-chain/blob-hub/types"
 	"github.com/bnb-chain/blob-hub/util"
 )
+
+const VerifyPauseTime = 90 * time.Second
 
 var (
 	ErrVerificationFailed = errors.New("verification failed")
@@ -34,21 +35,11 @@ var (
 //
 // a new bundle should be re-uploaded.
 func (s *BlobSyncer) verify() error {
-	var (
-		err       error
-		sleepTime time.Duration
-	)
-	if s.BSCChain() {
-		sleepTime = BSCPauseTime
-	} else {
-		sleepTime = ETHPauseTime
-	}
-
 	verifyBlock, err := s.blobDao.GetEarliestUnverifiedBlock()
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			logging.Logger.Debugf("found no unverified block in DB")
-			time.Sleep(sleepTime)
+			time.Sleep(VerifyPauseTime)
 			return nil
 		}
 		return err
@@ -67,7 +58,7 @@ func (s *BlobSyncer) verify() error {
 	}
 	if bundle.Status == db.Finalizing {
 		logging.Logger.Debugf("the bundle has not been submitted to bundle service yet, bundleName=%s", bundleName)
-		time.Sleep(sleepTime)
+		time.Sleep(VerifyPauseTime)
 		return nil
 	}
 
@@ -100,6 +91,7 @@ func (s *BlobSyncer) verify() error {
 		// the bundle is not sealed yet
 		if bundleInfo.Status == BundleStatusFinalized || bundleInfo.Status == BundleStatusCreatedOnChain {
 			if bundle.CreatedTime > 0 && time.Now().Unix()-bundle.CreatedTime > s.config.GetReUploadBundleThresh() {
+				logging.Logger.Infof("the bundle %s is not sealed and exceed the re-upload threshold %d ", bundleName, s.config.GetReUploadBundleThresh())
 				return s.reUploadBundle(bundleName)
 			}
 			return nil

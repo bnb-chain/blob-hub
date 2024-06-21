@@ -62,8 +62,11 @@ func (s *SyncerConfig) Validate() {
 	if len(s.PrivateKey) == 0 {
 		panic("private key is not provided")
 	}
-	if s.CreateBundleSlotOrBlockInterval > 100 {
-		panic("create_bundle_slot_interval is supposed less than 100")
+	if s.Chain == BSC && s.CreateBundleSlotOrBlockInterval > 200 {
+		panic("create_bundle_slot_interval is supposed to be less than 100")
+	}
+	if s.Chain == ETH && s.CreateBundleSlotOrBlockInterval > 30 {
+		panic("create_bundle_slot_interval is supposed to be less than 30")
 	}
 	if s.BundleNotSealedReuploadThreshold <= 60 {
 		panic("Bundle_not_sealed_reupload_threshold is supposed larger than 60 (s)")
@@ -87,6 +90,7 @@ func (s *SyncerConfig) GetReUploadBundleThresh() int64 {
 }
 
 type ServerConfig struct {
+	Chain                  string      `json:"chain"`
 	BucketName             string      `json:"bucket_name"`
 	BundleServiceEndpoints []string    `json:"bundle_service_endpoints"` // BundleServiceEndpoints is a list of bundle service address
 	CacheConfig            CacheConfig `json:"cache_config"`
@@ -94,6 +98,9 @@ type ServerConfig struct {
 }
 
 func (s *ServerConfig) Validate() {
+	if !strings.EqualFold(s.Chain, ETH) && !strings.EqualFold(s.Chain, BSC) {
+		panic("chain not support")
+	}
 	if len(s.BucketName) == 0 {
 		panic("the Greenfield bucket name is not is not provided")
 	}

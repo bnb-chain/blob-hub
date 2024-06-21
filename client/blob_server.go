@@ -5,12 +5,13 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/bnb-chain/blob-hub/models"
 	blobproto "github.com/bnb-chain/blob-hub/proto"
 	"github.com/bnb-chain/blob-hub/service"
 	"github.com/bnb-chain/blob-hub/types"
 	"github.com/bnb-chain/blob-hub/util"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 type BlobServer struct {
@@ -53,11 +54,11 @@ func (s *BlobServer) GetBlobSidecars(ctx context.Context, req *blobproto.GetBlob
 				return nil, err
 			}
 		} else {
-			slot, err := util.StringToUint64(blockID)
+			blockNumOrSlot, err := util.StringToUint64(blockID)
 			if err != nil {
 				return nil, err
 			}
-			sidecars, err = service.BlobSvc.GetBlobSidecarsBySlot(slot, indicesInx)
+			sidecars, err = service.BlobSvc.GetBlobSidecarsByBlockNumOrSlot(blockNumOrSlot, indicesInx)
 			if err != nil {
 				return nil, err
 			}

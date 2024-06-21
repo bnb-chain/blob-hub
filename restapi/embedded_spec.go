@@ -146,7 +146,8 @@ func init() {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "x-omitempty": true
         },
         "kzg_proof": {
           "type": "string"
@@ -312,7 +313,8 @@ func init() {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "x-omitempty": true
         },
         "kzg_proof": {
           "type": "string"

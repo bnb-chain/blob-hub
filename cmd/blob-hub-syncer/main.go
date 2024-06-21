@@ -34,7 +34,6 @@ func main() {
 	if configFilePath == "" {
 		configFilePath = os.Getenv(config.EnvVarConfigFilePath)
 	}
-	//configFilePath = "config/local/bsc-config-syncer.json"
 	cfg = config.ParseSyncerConfigFromFile(configFilePath)
 	if cfg == nil {
 		panic("failed to get configuration")

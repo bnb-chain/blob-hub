@@ -11,24 +11,23 @@ import (
 	"strings"
 	"time"
 
-	"gorm.io/gorm"
-
-	"github.com/bnb-chain/blob-hub/external"
-	"github.com/bnb-chain/blob-hub/external/cmn"
-	"github.com/bnb-chain/blob-hub/external/eth"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
 	v1 "github.com/prysmaticlabs/prysm/v5/proto/engine/v1"
 	ethpb "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
 	"github.com/prysmaticlabs/prysm/v5/runtime/version"
+	"gorm.io/gorm"
 
 	"github.com/bnb-chain/blob-hub/config"
 	"github.com/bnb-chain/blob-hub/db"
+	"github.com/bnb-chain/blob-hub/external"
+	"github.com/bnb-chain/blob-hub/external/cmn"
+	"github.com/bnb-chain/blob-hub/external/eth"
 	"github.com/bnb-chain/blob-hub/logging"
 	"github.com/bnb-chain/blob-hub/metrics"
 	"github.com/bnb-chain/blob-hub/types"
 	"github.com/bnb-chain/blob-hub/util"
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 const (
@@ -463,6 +462,7 @@ func (s *BlobSyncer) toBlockAndBlobs(blockResp *structs.GetBlockV2Response, side
 				logging.Logger.Errorf("failed to get header, slot=%d, err=%s", blockNumOrSlot, err.Error())
 				return nil, nil, err
 			}
+
 			rootBz, err := hexutil.Decode(header.Data.Root)
 			if err != nil {
 				logging.Logger.Errorf("failed to decode header.Data.Root=%s, err=%s", header.Data.Root, err.Error())

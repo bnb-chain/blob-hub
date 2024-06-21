@@ -79,6 +79,7 @@ definitions:
         type: string
       kzg_commitment_inclusion_proof:
         type: array
+        x-omitempty: true
         items:
           type: string
       signed_block_header:

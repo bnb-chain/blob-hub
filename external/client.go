@@ -5,13 +5,14 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/bnb-chain/blob-hub/config"
-	"github.com/bnb-chain/blob-hub/external/eth"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
+
+	"github.com/bnb-chain/blob-hub/config"
+	"github.com/bnb-chain/blob-hub/external/eth"
 )
 
 const BSCBlockConfirmNum = 3

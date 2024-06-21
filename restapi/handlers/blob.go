@@ -4,13 +4,13 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/bnb-chain/blob-hub/types"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/go-openapi/runtime/middleware"
 
 	"github.com/bnb-chain/blob-hub/models"
 	"github.com/bnb-chain/blob-hub/restapi/operations/blob"
 	"github.com/bnb-chain/blob-hub/service"
+	"github.com/bnb-chain/blob-hub/types"
 	"github.com/bnb-chain/blob-hub/util"
 )
 
@@ -52,7 +52,7 @@ func HandleGetBlobSidecars() func(params blob.GetBlobSidecarsByBlockNumParams) m
 				if err != nil {
 					return blob.NewGetBlobSidecarsByBlockNumBadRequest().WithPayload(service.BadRequestWithError(err))
 				}
-				sidecars, err = service.BlobSvc.GetBlobSidecarsBySlot(slot, indicesInx)
+				sidecars, err = service.BlobSvc.GetBlobSidecarsByBlockNumOrSlot(slot, indicesInx)
 				if err != nil {
 					return blob.NewGetBlobSidecarsByBlockNumInternalServerError().WithPayload(service.InternalErrorWithError(err))
 				}

@@ -11,24 +11,22 @@ import (
 	"net/http"
 	"os"
 
-	"google.golang.org/grpc"
-
-	"github.com/bnb-chain/blob-hub/client"
-	"github.com/bnb-chain/blob-hub/external/cmn"
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/swag"
+	grpcruntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"google.golang.org/grpc"
 
 	"github.com/bnb-chain/blob-hub/cache"
+	"github.com/bnb-chain/blob-hub/client"
 	"github.com/bnb-chain/blob-hub/config"
 	syncerdb "github.com/bnb-chain/blob-hub/db"
+	"github.com/bnb-chain/blob-hub/external/cmn"
 	blobproto "github.com/bnb-chain/blob-hub/proto"
 	"github.com/bnb-chain/blob-hub/restapi/handlers"
 	"github.com/bnb-chain/blob-hub/restapi/operations"
 	"github.com/bnb-chain/blob-hub/restapi/operations/blob"
 	"github.com/bnb-chain/blob-hub/service"
-
-	grpcruntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
 
 //go:generate swagger generate server --target ../../blob-syncer --name BlobHub --spec ../swagger.yaml --principal interface{}
