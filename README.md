@@ -113,7 +113,7 @@ Once the bundle is downloaded and extracted, all original blob files can be foun
 
 ### Requirement
 
-Go version above 1.20
+Go version above 1.22
 
 ### Create a bucket on Greenfield
 

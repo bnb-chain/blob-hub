@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine as builder
+FROM golang:1.22-alpine as builder
 
 # Set up apk dependencies
 ENV PACKAGES make git libc-dev bash gcc linux-headers eudev-dev curl ca-certificates build-base

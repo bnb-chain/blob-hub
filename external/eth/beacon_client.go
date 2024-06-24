@@ -1,4 +1,4 @@
-package external
+package eth
 
 import (
 	"context"
@@ -67,7 +67,7 @@ func (c *BeaconClient) GetBlob(ctx context.Context, slotNumber uint64) ([]*struc
 	return sidecars.Data, nil
 }
 
-func (c *BeaconClient) GetBlock(ctx context.Context, slotNumber uint64) (*structs.GetBlockV2Response, error) {
+func (c *BeaconClient) GetBeaconBlock(ctx context.Context, slotNumber uint64) (*structs.GetBlockV2Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.host+fmt.Sprintf(pathGetBlock, strconv.FormatUint(slotNumber, 10)), nil)
 	if err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (c *BeaconClient) GetBlock(ctx context.Context, slotNumber uint64) (*struct
 
 }
 
-func (c *BeaconClient) GetLatestBlock(ctx context.Context) (*structs.GetBlockV2Response, error) {
+func (c *BeaconClient) GetLatestBeaconBlock(ctx context.Context) (*structs.GetBlockV2Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.host+fmt.Sprintf(pathGetBlock, "head"), nil)
 	if err != nil {
 		return nil, err
@@ -116,7 +116,7 @@ func (c *BeaconClient) GetLatestBlock(ctx context.Context) (*structs.GetBlockV2R
 
 }
 
-func (c *BeaconClient) GetHeader(ctx context.Context, slotNumber uint64) (*structs.GetBlockHeaderResponse, error) {
+func (c *BeaconClient) GetBeaconHeader(ctx context.Context, slotNumber uint64) (*structs.GetBlockHeaderResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.host+fmt.Sprintf(pathGetHeader, strconv.FormatUint(slotNumber, 10)), nil)
 	if err != nil {
 		return nil, err

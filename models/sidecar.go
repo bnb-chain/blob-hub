@@ -29,13 +29,19 @@ type Sidecar struct {
 	KzgCommitment string `json:"kzg_commitment,omitempty"`
 
 	// kzg commitment inclusion proof
-	KzgCommitmentInclusionProof []string `json:"kzg_commitment_inclusion_proof"`
+	KzgCommitmentInclusionProof []string `json:"kzg_commitment_inclusion_proof,omitempty"`
 
 	// kzg proof
 	KzgProof string `json:"kzg_proof,omitempty"`
 
 	// signed block header
 	SignedBlockHeader *SidecarSignedBlockHeader `json:"signed_block_header,omitempty"`
+
+	// tx hash
+	TxHash string `json:"tx_hash,omitempty"`
+
+	// tx index
+	TxIndex int64 `json:"tx_index,omitempty"`
 }
 
 // Validate validates this sidecar

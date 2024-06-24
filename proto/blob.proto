@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package user;
+
+option go_package = "/proto";
+
+import "google/api/annotations.proto";
+
+service BlobService {
+  rpc GetBlobSidecars (GetBlobSidecarsRequest) returns (GetBlobSidecarsResponse) {
+    option (google.api.http) = {
+      get: "/eth/v1/beacon/blob_sidecars/{block_id}"
+    };
+  }
+}
+
+message GetBlobSidecarsRequest {
+  string block_id = 1;
+  repeated string indices = 2;
+}
+
+
+message GetBlobSidecarsResponse {
+  repeated SideCar data = 1;
+}
+
+message SideCar {
+  string blob  = 1;
+  string index  = 2;
+  string kzg_commitment  = 3;
+  repeated string kzg_commitment_inclusion_proof  = 4;
+  string kzg_proof  = 5;
+  SignedBeaconBlockHeader signed_block_header = 6;
+}
+
+message SignedBeaconBlockHeader {
+  BeaconBlockHeader message = 1;
+  string Signature = 2;
+}
+
+message BeaconBlockHeader {
+  string body_root = 1;
+  string parent_root = 2;
+  string proposer_index = 3;
+  string slot = 4;
+  string state_root = 5;
+}

@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const RootLength = 32
+
 func GetBlobName(slot uint64, index int) string {
 	return fmt.Sprintf("blob_h%d_i%d", slot, index)
 }

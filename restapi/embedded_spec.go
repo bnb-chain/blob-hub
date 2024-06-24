@@ -28,9 +28,44 @@ func init() {
     "version": "1.0.0"
   },
   "host": "blob-hub",
-  "basePath": "/eth/v1",
   "paths": {
-    "/beacon/blob_sidecars/{block_id}": {
+    "/": {
+      "post": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "blob"
+        ],
+        "summary": "Get BSC blob sidecars by block num",
+        "operationId": "getBSCBlobSidecarsByBlockNum",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RPCRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/RPCResponse"
+            }
+          },
+          "500": {
+            "description": "internal server error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/eth/v1/beacon/blob_sidecars/{block_id}": {
       "get": {
         "produces": [
           "application/json"
@@ -89,6 +124,49 @@ func init() {
     }
   },
   "definitions": {
+    "BSCBlobSidecar": {
+      "type": "object",
+      "properties": {
+        "blobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "commitments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "proofs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "BSCBlobTxSidecar": {
+      "type": "object",
+      "properties": {
+        "blobSidecar": {
+          "$ref": "#/definitions/BSCBlobSidecar"
+        },
+        "blockHash": {
+          "type": "string"
+        },
+        "blockNumber": {
+          "type": "string"
+        },
+        "txHash": {
+          "type": "string"
+        },
+        "txIndex": {
+          "type": "string"
+        }
+      }
+    },
     "Error": {
       "type": "object",
       "properties": {
@@ -129,6 +207,73 @@ func init() {
         }
       }
     },
+    "RPCError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "RPC error code",
+          "type": "integer",
+          "format": "int64",
+          "x-omitempty": false,
+          "example": -32602
+        },
+        "message": {
+          "description": "Error message",
+          "type": "string",
+          "x-omitempty": false,
+          "example": "Invalid params"
+        }
+      }
+    },
+    "RPCRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "example": 1
+        },
+        "jsonrpc": {
+          "type": "string",
+          "example": "2.0"
+        },
+        "method": {
+          "type": "string",
+          "example": "eth_getBlobSidecars"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "example": [
+            "0x1",
+            true
+          ]
+        }
+      }
+    },
+    "RPCResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/RPCError"
+        },
+        "id": {
+          "type": "integer",
+          "example": 1
+        },
+        "jsonrpc": {
+          "type": "string",
+          "example": "2.0"
+        },
+        "result": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BSCBlobTxSidecar"
+          }
+        }
+      }
+    },
     "Sidecar": {
       "type": "object",
       "properties": {
@@ -146,7 +291,8 @@ func init() {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "x-omitempty": true
         },
         "kzg_proof": {
           "type": "string"
@@ -178,6 +324,14 @@ func init() {
               "type": "string"
             }
           }
+        },
+        "tx_hash": {
+          "type": "string"
+        },
+        "tx_index": {
+          "type": "integer",
+          "format": "int64",
+          "x-omitempty": true
         }
       }
     }
@@ -194,9 +348,44 @@ func init() {
     "version": "1.0.0"
   },
   "host": "blob-hub",
-  "basePath": "/eth/v1",
   "paths": {
-    "/beacon/blob_sidecars/{block_id}": {
+    "/": {
+      "post": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "blob"
+        ],
+        "summary": "Get BSC blob sidecars by block num",
+        "operationId": "getBSCBlobSidecarsByBlockNum",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RPCRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/RPCResponse"
+            }
+          },
+          "500": {
+            "description": "internal server error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/eth/v1/beacon/blob_sidecars/{block_id}": {
       "get": {
         "produces": [
           "application/json"
@@ -255,6 +444,49 @@ func init() {
     }
   },
   "definitions": {
+    "BSCBlobSidecar": {
+      "type": "object",
+      "properties": {
+        "blobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "commitments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "proofs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "BSCBlobTxSidecar": {
+      "type": "object",
+      "properties": {
+        "blobSidecar": {
+          "$ref": "#/definitions/BSCBlobSidecar"
+        },
+        "blockHash": {
+          "type": "string"
+        },
+        "blockNumber": {
+          "type": "string"
+        },
+        "txHash": {
+          "type": "string"
+        },
+        "txIndex": {
+          "type": "string"
+        }
+      }
+    },
     "Error": {
       "type": "object",
       "properties": {
@@ -295,6 +527,73 @@ func init() {
         }
       }
     },
+    "RPCError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "RPC error code",
+          "type": "integer",
+          "format": "int64",
+          "x-omitempty": false,
+          "example": -32602
+        },
+        "message": {
+          "description": "Error message",
+          "type": "string",
+          "x-omitempty": false,
+          "example": "Invalid params"
+        }
+      }
+    },
+    "RPCRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "example": 1
+        },
+        "jsonrpc": {
+          "type": "string",
+          "example": "2.0"
+        },
+        "method": {
+          "type": "string",
+          "example": "eth_getBlobSidecars"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "example": [
+            "0x1",
+            true
+          ]
+        }
+      }
+    },
+    "RPCResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/RPCError"
+        },
+        "id": {
+          "type": "integer",
+          "example": 1
+        },
+        "jsonrpc": {
+          "type": "string",
+          "example": "2.0"
+        },
+        "result": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BSCBlobTxSidecar"
+          }
+        }
+      }
+    },
     "Sidecar": {
       "type": "object",
       "properties": {
@@ -312,7 +611,8 @@ func init() {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "x-omitempty": true
         },
         "kzg_proof": {
           "type": "string"
@@ -344,6 +644,14 @@ func init() {
               "type": "string"
             }
           }
+        },
+        "tx_hash": {
+          "type": "string"
+        },
+        "tx_index": {
+          "type": "integer",
+          "format": "int64",
+          "x-omitempty": true
         }
       }
     },
