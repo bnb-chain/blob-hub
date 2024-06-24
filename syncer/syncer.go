@@ -173,7 +173,7 @@ func (s *BlobSyncer) sync() error {
 		}
 	}
 
-	var sideCars []*structs.Sidecar
+	var sideCars []*types.GeneralSideCar
 
 	if !isForkedBlock {
 		ctx, cancel = context.WithTimeout(context.Background(), RPCTimeout)
@@ -212,7 +212,7 @@ func (s *BlobSyncer) sync() error {
 	return nil
 }
 
-func (s *BlobSyncer) process(bundleName string, blockID uint64, sidecars []*structs.Sidecar) error {
+func (s *BlobSyncer) process(bundleName string, blockID uint64, sidecars []*types.GeneralSideCar) error {
 	var err error
 	// create a new bundle in local.
 	if blockID == s.bundleDetail.startBlockID {
@@ -302,7 +302,7 @@ func (s *BlobSyncer) finalizeCurBundle(bundleName string) error {
 	return s.finalizeBundle(bundleName, s.getBundleDir(bundleName), s.getBundleFilePath(bundleName))
 }
 
-func (s *BlobSyncer) writeBlobToFile(slot uint64, bundleName string, blobs []*structs.Sidecar) error {
+func (s *BlobSyncer) writeBlobToFile(slot uint64, bundleName string, blobs []*types.GeneralSideCar) error {
 	for i, b := range blobs {
 		blobName := types.GetBlobName(slot, i)
 		file, err := os.Create(s.getBlobPath(bundleName, blobName))
@@ -378,7 +378,7 @@ func (s *BlobSyncer) LoadProgressAndResume(nextBlockID uint64) error {
 	return nil
 }
 
-func (s *BlobSyncer) toBlockAndBlobs(blockResp *structs.GetBlockV2Response, sidecars []*structs.Sidecar, blockNumOrSlot uint64, bundleName string) (*db.Block, []*db.Blob, error) {
+func (s *BlobSyncer) toBlockAndBlobs(blockResp *structs.GetBlockV2Response, sidecars []*types.GeneralSideCar, blockNumOrSlot uint64, bundleName string) (*db.Block, []*db.Blob, error) {
 
 	var blockReturn *db.Block
 	blobsReturn := make([]*db.Blob, 0)
@@ -426,6 +426,8 @@ func (s *BlobSyncer) toBlockAndBlobs(blockResp *structs.GetBlockV2Response, side
 				Name:          types.GetBlobName(blockNumOrSlot, index),
 				Slot:          blockNumOrSlot,
 				Idx:           index,
+				TxIndex:       int(blob.TxIndex),
+				TxHash:        blob.TxHash,
 				KzgProof:      blob.KzgProof,
 				KzgCommitment: blob.KzgCommitment,
 			}

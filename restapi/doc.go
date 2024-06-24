@@ -6,7 +6,7 @@
 //	Schemes:
 //	  http
 //	Host: blob-hub
-//	BasePath: /eth/v1
+//	BasePath: /
 //	Version: 1.0.0
 //
 //	Consumes:

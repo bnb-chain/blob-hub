@@ -97,6 +97,8 @@ func (b BlobService) GetBlobSidecarsByBlockNumOrSlot(blockNumOrSlot uint64, indi
 				KzgCommitment:               meta.KzgCommitment,
 				KzgProof:                    meta.KzgProof,
 				SignedBlockHeader:           header,
+				TxIndex:                     int64(meta.TxIndex),
+				TxHash:                      meta.TxHash,
 			})
 	}
 

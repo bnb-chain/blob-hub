@@ -62,6 +62,7 @@ func configureAPI(api *operations.BlobHubAPI) http.Handler {
 	api.JSONProducer = runtime.JSONProducer()
 
 	api.BlobGetBlobSidecarsByBlockNumHandler = blob.GetBlobSidecarsByBlockNumHandlerFunc(handlers.HandleGetBlobSidecars())
+	api.BlobGetBSCBlobSidecarsByBlockNumHandler = blob.GetBSCBlobSidecarsByBlockNumHandlerFunc(handlers.HandleGetBSCBlobSidecars())
 	api.PreServerShutdown = func() {}
 
 	api.ServerShutdown = func() {}

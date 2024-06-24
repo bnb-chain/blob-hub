@@ -156,7 +156,7 @@ func (s *BlobSyncer) verify() error {
 	return nil
 }
 
-func (s *BlobSyncer) verifyBlob(blockID uint64, sidecars []*structs.Sidecar, blobMetas []*db.Blob, bundleName string) error {
+func (s *BlobSyncer) verifyBlob(blockID uint64, sidecars []*types.GeneralSideCar, blobMetas []*db.Blob, bundleName string) error {
 	for i := 0; i < len(sidecars); i++ {
 		// get blob from bundle service
 		blobFromBundle, err := s.bundleClient.GetObject(s.getBucketName(), bundleName, types.GetBlobName(blockID, i))

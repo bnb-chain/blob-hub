@@ -36,6 +36,12 @@ type Sidecar struct {
 
 	// signed block header
 	SignedBlockHeader *SidecarSignedBlockHeader `json:"signed_block_header,omitempty"`
+
+	// tx hash
+	TxHash string `json:"tx_hash,omitempty"`
+
+	// tx index
+	TxIndex int64 `json:"tx_index,omitempty"`
 }
 
 // Validate validates this sidecar

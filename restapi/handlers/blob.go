@@ -64,3 +64,82 @@ func HandleGetBlobSidecars() func(params blob.GetBlobSidecarsByBlockNumParams) m
 		}
 	}
 }
+
+func HandleGetBSCBlobSidecars() func(params blob.GetBSCBlobSidecarsByBlockNumParams) middleware.Responder {
+	return func(params blob.GetBSCBlobSidecarsByBlockNumParams) middleware.Responder {
+
+		rpcRequest := params.Body
+		if rpcRequest.Params == nil {
+			return blob.NewGetBSCBlobSidecarsByBlockNumOK().WithPayload(
+				&models.RPCResponse{
+					ID:      rpcRequest.ID,
+					Jsonrpc: rpcRequest.Jsonrpc,
+					Error: &models.RPCError{
+						Code:    -32600,
+						Message: "Invalid request",
+					},
+				},
+			)
+		}
+
+		switch rpcRequest.Method {
+		case "eth_getBlobSidecars":
+			blockNum, err := util.HexToUint64(rpcRequest.Params[0])
+			if err != nil {
+				return blob.NewGetBSCBlobSidecarsByBlockNumOK().WithPayload(
+					&models.RPCResponse{
+						ID:      rpcRequest.ID,
+						Jsonrpc: rpcRequest.Jsonrpc,
+						Error: &models.RPCError{
+							Code:    -32602,
+							Message: "invalid argument",
+						},
+					},
+				)
+			}
+			sidecars, err := service.BlobSvc.GetBlobSidecarsByBlockNumOrSlot(blockNum, nil)
+			if err != nil {
+				return blob.NewGetBlobSidecarsByBlockNumInternalServerError().WithPayload(service.InternalErrorWithError(err))
+			}
+			// group sidecars by tx hash
+			bscTxSidecars := make(map[string]*models.BSCBlobTxSidecar)
+			for _, sidecar := range sidecars {
+				txSidecar, ok := bscTxSidecars[sidecar.TxHash]
+				if !ok {
+					txSidecar = &models.BSCBlobTxSidecar{
+						BlobSidecar: &models.BSCBlobSidecar{},
+						TxHash:      sidecar.TxHash,
+					}
+					bscTxSidecars[sidecar.TxHash] = txSidecar
+				}
+				txSidecar.BlobSidecar.Blobs = append(txSidecar.BlobSidecar.Blobs, sidecar.Blob)
+				txSidecar.BlobSidecar.Commitments = append(txSidecar.BlobSidecar.Commitments, sidecar.KzgCommitment)
+				txSidecar.BlobSidecar.Proofs = append(txSidecar.BlobSidecar.Proofs, sidecar.KzgProof)
+				txSidecar.TxIndex = util.Int64ToHex(sidecar.TxIndex)
+				txSidecar.BlockNumber = rpcRequest.Params[0]
+			}
+			// convert txSidecars to array
+			txSidecarsArr := make([]*models.BSCBlobTxSidecar, 0)
+			for _, txSidecar := range bscTxSidecars {
+				txSidecarsArr = append(txSidecarsArr, txSidecar)
+			}
+			response := &models.RPCResponse{
+				ID:      rpcRequest.ID,
+				Jsonrpc: rpcRequest.Jsonrpc,
+				Result:  txSidecarsArr,
+			}
+			return blob.NewGetBSCBlobSidecarsByBlockNumOK().WithPayload(response)
+		default:
+			return blob.NewGetBSCBlobSidecarsByBlockNumOK().WithPayload(
+				&models.RPCResponse{
+					ID:      rpcRequest.ID,
+					Jsonrpc: rpcRequest.Jsonrpc,
+					Error: &models.RPCError{
+						Code:    -32601,
+						Message: "method not supported",
+					},
+				},
+			)
+		}
+	}
+}

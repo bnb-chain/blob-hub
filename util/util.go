@@ -64,3 +64,17 @@ func Uint64ToString(u uint64) string {
 func Int64ToString(u int64) string {
 	return strconv.FormatInt(u, 10)
 }
+
+// HexToUint64 converts hex string to uint64
+func HexToUint64(hexStr string) (uint64, error) {
+	intValue, err := strconv.ParseUint(hexStr, 0, 64)
+	if err != nil {
+		return 0, err
+	}
+	return intValue, nil
+}
+
+// Int64ToHex converts int64 to hex string
+func Int64ToHex(int64 int64) string {
+	return "0x" + strconv.FormatInt(int64, 16)
+}

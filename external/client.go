@@ -13,12 +13,14 @@ import (
 
 	"github.com/bnb-chain/blob-hub/config"
 	"github.com/bnb-chain/blob-hub/external/eth"
+	types2 "github.com/bnb-chain/blob-hub/types"
+	"github.com/bnb-chain/blob-hub/util"
 )
 
 const BSCBlockConfirmNum = 3
 
 type IClient interface {
-	GetBlob(ctx context.Context, blockID uint64) ([]*structs.Sidecar, error)
+	GetBlob(ctx context.Context, blockID uint64) ([]*types2.GeneralSideCar, error)
 	GetBlockHeader(ctx context.Context, height uint64) (*types.Header, error)
 	GetFinalizedBlockNum(ctx context.Context) (uint64, error)
 	BlockByNumber(ctx context.Context, int2 *big.Int) (*types.Block, error)
@@ -61,24 +63,35 @@ func NewClient(cfg *config.SyncerConfig) IClient {
 	return cli
 }
 
-func (c *Client) GetBlob(ctx context.Context, blockID uint64) ([]*structs.Sidecar, error) {
+func (c *Client) GetBlob(ctx context.Context, blockID uint64) ([]*types2.GeneralSideCar, error) {
+	sidecars := make([]*types2.GeneralSideCar, 0)
 	if c.cfg.Chain == config.BSC {
-		var r []*BlobTxSidecar
+		var txSidecars []*BSCBlobTxSidecar
 		number := rpc.BlockNumberOrHashWithNumber(rpc.BlockNumber(blockID))
-		err := c.rpcClient.CallContext(ctx, &r, "eth_getBlobSidecars", number.String())
-		if err == nil && r == nil {
+		err := c.rpcClient.CallContext(ctx, &txSidecars, "eth_getBlobSidecars", number.String())
+		if err != nil {
+			return nil, err
+		}
+		if txSidecars == nil {
 			return nil, ethereum.NotFound
 		}
-		sidecars := make([]*structs.Sidecar, 0)
 		idx := 0
-		for _, b := range r {
-			for j := range b.BlobSidecar.Blobs {
+		for _, txSidecar := range txSidecars {
+			txIndex, err := util.HexToUint64(txSidecar.TxIndex)
+			if err != nil {
+				return nil, err
+			}
+			for j := range txSidecar.BlobSidecar.Blobs {
 				sidecars = append(sidecars,
-					&structs.Sidecar{
-						Index:         strconv.Itoa(idx),
-						Blob:          b.BlobSidecar.Blobs[j],
-						KzgCommitment: b.BlobSidecar.Commitments[j],
-						KzgProof:      b.BlobSidecar.Proofs[j],
+					&types2.GeneralSideCar{
+						Sidecar: structs.Sidecar{
+							Index:         strconv.Itoa(idx),
+							Blob:          txSidecar.BlobSidecar.Blobs[j],
+							KzgCommitment: txSidecar.BlobSidecar.Commitments[j],
+							KzgProof:      txSidecar.BlobSidecar.Proofs[j],
+						},
+						TxIndex: int64(txIndex),
+						TxHash:  txSidecar.TxHash,
 					},
 				)
 				idx++
@@ -86,7 +99,18 @@ func (c *Client) GetBlob(ctx context.Context, blockID uint64) ([]*structs.Sideca
 		}
 		return sidecars, err
 	}
-	return c.beaconClient.GetBlob(ctx, blockID)
+	ethSidecars, err := c.beaconClient.GetBlob(ctx, blockID)
+	if err != nil {
+		return nil, err
+	}
+	for _, sidecar := range ethSidecars {
+		sidecars = append(sidecars,
+			&types2.GeneralSideCar{
+				Sidecar: *sidecar,
+			},
+		)
+	}
+	return sidecars, nil
 }
 
 func (c *Client) GetBlockHeader(ctx context.Context, height uint64) (*types.Header, error) {
@@ -124,17 +148,18 @@ func (c *Client) GetBeaconBlock(ctx context.Context, slotNumber uint64) (*struct
 	return c.beaconClient.GetBeaconBlock(ctx, slotNumber)
 }
 
-// Define the Go structs to match the JSON structure
-type BlobSidecar struct {
+// BSCBlobSidecar is a sidecar struct for BSC
+type BSCBlobSidecar struct {
 	Blobs       []string `json:"blobs"`
 	Commitments []string `json:"commitments"`
 	Proofs      []string `json:"proofs"`
 }
 
-type BlobTxSidecar struct {
-	BlobSidecar BlobSidecar `json:"blobSidecar"`
-	BlockNumber string      `json:"blockNumber"`
-	BlockHash   string      `json:"blockHash"`
-	TxIndex     string      `json:"txIndex"`
-	TxHash      string      `json:"txHash"`
+// BSCBlobTxSidecar is a sidecar struct for BSC blob tx
+type BSCBlobTxSidecar struct {
+	BlobSidecar BSCBlobSidecar `json:"blobSidecar"`
+	BlockNumber string         `json:"blockNumber"`
+	BlockHash   string         `json:"blockHash"`
+	TxIndex     string         `json:"txIndex"`
+	TxHash      string         `json:"txHash"`
 }

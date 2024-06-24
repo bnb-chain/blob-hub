@@ -44,6 +44,9 @@ func NewBlobHubAPI(spec *loads.Document) *BlobHubAPI {
 
 		JSONProducer: runtime.JSONProducer(),
 
+		BlobGetBSCBlobSidecarsByBlockNumHandler: blob.GetBSCBlobSidecarsByBlockNumHandlerFunc(func(params blob.GetBSCBlobSidecarsByBlockNumParams) middleware.Responder {
+			return middleware.NotImplemented("operation blob.GetBSCBlobSidecarsByBlockNum has not yet been implemented")
+		}),
 		BlobGetBlobSidecarsByBlockNumHandler: blob.GetBlobSidecarsByBlockNumHandlerFunc(func(params blob.GetBlobSidecarsByBlockNumParams) middleware.Responder {
 			return middleware.NotImplemented("operation blob.GetBlobSidecarsByBlockNum has not yet been implemented")
 		}),
@@ -83,6 +86,8 @@ type BlobHubAPI struct {
 	//   - application/json
 	JSONProducer runtime.Producer
 
+	// BlobGetBSCBlobSidecarsByBlockNumHandler sets the operation handler for the get b s c blob sidecars by block num operation
+	BlobGetBSCBlobSidecarsByBlockNumHandler blob.GetBSCBlobSidecarsByBlockNumHandler
 	// BlobGetBlobSidecarsByBlockNumHandler sets the operation handler for the get blob sidecars by block num operation
 	BlobGetBlobSidecarsByBlockNumHandler blob.GetBlobSidecarsByBlockNumHandler
 
@@ -162,6 +167,9 @@ func (o *BlobHubAPI) Validate() error {
 		unregistered = append(unregistered, "JSONProducer")
 	}
 
+	if o.BlobGetBSCBlobSidecarsByBlockNumHandler == nil {
+		unregistered = append(unregistered, "blob.GetBSCBlobSidecarsByBlockNumHandler")
+	}
 	if o.BlobGetBlobSidecarsByBlockNumHandler == nil {
 		unregistered = append(unregistered, "blob.GetBlobSidecarsByBlockNumHandler")
 	}
@@ -253,10 +261,14 @@ func (o *BlobHubAPI) initHandlerCache() {
 		o.handlers = make(map[string]map[string]http.Handler)
 	}
 
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"][""] = blob.NewGetBSCBlobSidecarsByBlockNum(o.context, o.BlobGetBSCBlobSidecarsByBlockNumHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
-	o.handlers["GET"]["/beacon/blob_sidecars/{block_id}"] = blob.NewGetBlobSidecarsByBlockNum(o.context, o.BlobGetBlobSidecarsByBlockNumHandler)
+	o.handlers["GET"]["/eth/v1/beacon/blob_sidecars/{block_id}"] = blob.NewGetBlobSidecarsByBlockNum(o.context, o.BlobGetBlobSidecarsByBlockNumHandler)
 }
 
 // Serve creates a http handler to serve the API over HTTP

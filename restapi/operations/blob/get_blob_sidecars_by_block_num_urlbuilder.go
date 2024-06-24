@@ -44,7 +44,7 @@ func (o *GetBlobSidecarsByBlockNumURL) SetBasePath(bp string) {
 func (o *GetBlobSidecarsByBlockNumURL) Build() (*url.URL, error) {
 	var _result url.URL
 
-	var _path = "/beacon/blob_sidecars/{block_id}"
+	var _path = "/eth/v1/beacon/blob_sidecars/{block_id}"
 
 	blockID := o.BlockID
 	if blockID != "" {
@@ -54,9 +54,6 @@ func (o *GetBlobSidecarsByBlockNumURL) Build() (*url.URL, error) {
 	}
 
 	_basePath := o._basePath
-	if _basePath == "" {
-		_basePath = "/eth/v1"
-	}
 	_result.Path = golangswaggerpaths.Join(_basePath, _path)
 
 	qs := make(url.Values)
