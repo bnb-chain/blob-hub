@@ -43,7 +43,7 @@ function grant() {
 
 function all() {
     prepare
-    ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt bucket create --primarySP ${SP_ADDRESS} --chargedQuota 322122547200 gnfd://${BUCKET_NAME}
+    ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt bucket create --primarySP ${SP_ADDRESS} --chargedQuota 53687091200 gnfd://${BUCKET_NAME}
     sleep 5
     ./gnfd-cmd -c ./config.toml --home ./ bucket head gnfd://${BUCKET_NAME}
     ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt policy put --grantee ${GRANTEE_BUNDLE_ACCOUNT} --actions createObj  grn:b::"$BUCKET_NAME"
