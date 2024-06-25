@@ -9,8 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
 	"gorm.io/gorm"
+
+	"github.com/prysmaticlabs/prysm/v5/api/server/structs"
 
 	"github.com/bnb-chain/blob-hub/db"
 	"github.com/bnb-chain/blob-hub/external/cmn"
@@ -80,7 +81,7 @@ func (s *BlobSyncer) verify() error {
 			if len(blobs) != 0 {
 				return fmt.Errorf("%d blobs within block_id[%d, %d] not found in bundle service", len(blobs), bundleStartBlockID, bundleEndBlockID)
 			}
-			if err = s.blobDao.UpdateBlocksStatus(bundleEndBlockID, bundleEndBlockID, db.Verified); err != nil {
+			if err = s.blobDao.UpdateBlocksStatus(bundleStartBlockID, bundleEndBlockID, db.Verified); err != nil {
 				return err
 			}
 			if err = s.blobDao.UpdateBundleStatus(bundleName, db.Sealed); err != nil {
