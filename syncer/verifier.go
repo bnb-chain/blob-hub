@@ -3,10 +3,12 @@ package syncer
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -36,9 +38,10 @@ var (
 //
 // a new bundle should be re-uploaded.
 func (s *BlobSyncer) verify() error {
+	// get the earliest unverified block
 	verifyBlock, err := s.blobDao.GetEarliestUnverifiedBlock()
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			logging.Logger.Debugf("found no unverified block in DB")
 			time.Sleep(VerifyPauseTime)
 			return nil
@@ -46,12 +49,6 @@ func (s *BlobSyncer) verify() error {
 		return err
 	}
 	bundleName := verifyBlock.BundleName
-	bundleStartBlockID, bundleEndBlockID, err := types.ParseBundleName(bundleName)
-	if err != nil {
-		return err
-	}
-	verifyBlockID := verifyBlock.Slot
-
 	// check if the bundle has been submitted to bundle service
 	bundle, err := s.blobDao.GetBundle(bundleName)
 	if err != nil {
@@ -62,13 +59,19 @@ func (s *BlobSyncer) verify() error {
 		time.Sleep(VerifyPauseTime)
 		return nil
 	}
+	// parse the bundle name
+	bundleStartBlockID, bundleEndBlockID, err := types.ParseBundleName(bundleName)
+	if err != nil {
+		return err
+	}
 
+	verifyBlockID := verifyBlock.Slot
 	// validate the bundle info at the start slot of a bundle
-	if verifyBlockID == bundleStartBlockID {
+	if verifyBlockID == bundleStartBlockID || !s.DetailedIntegrityCheckEnabled() {
 		// the bundle is recorded finalized in DB, validate the bundle is sealed onchain
 		bundleInfo, err := s.bundleClient.GetBundleInfo(s.getBucketName(), bundleName)
 		if err != nil {
-			if err != cmn.ErrorBundleNotExist {
+			if !errors.Is(err, cmn.ErrorBundleNotExist) {
 				logging.Logger.Errorf("failed to get bundle info, bundleName=%s", bundleName)
 				return err
 			}
@@ -97,6 +100,19 @@ func (s *BlobSyncer) verify() error {
 			}
 			return nil
 		}
+	}
+
+	// if the detailed integrity check is disabled, verify the bundle integrity
+	if !s.DetailedIntegrityCheckEnabled() {
+		err = s.verifyBundleIntegrity(bundleName, bundleStartBlockID, bundleEndBlockID)
+		if err != nil {
+			logging.Logger.Errorf("failed to verify bundle integrity, bundleName=%s, err=%s", bundleName, err.Error())
+			if errors.Is(err, ErrVerificationFailed) {
+				return s.reUploadBundle(bundleName)
+			}
+			return err
+		}
+		return nil
 	}
 
 	if verifyBlock.BlobCount == 0 {
@@ -134,13 +150,15 @@ func (s *BlobSyncer) verify() error {
 		return s.reUploadBundle(bundleName)
 	}
 
-	err = s.verifyBlob(verifyBlockID, sideCars, blobMetas, bundleName)
+	// verify the blob
+	err = s.verifyBlobsAtBlock(verifyBlockID, sideCars, blobMetas, bundleName)
 	if err != nil {
-		if err == ErrVerificationFailed {
+		if errors.Is(err, ErrVerificationFailed) {
 			return s.reUploadBundle(bundleName)
 		}
 		return err
 	}
+	// update the status
 	if err = s.blobDao.UpdateBlockStatus(verifyBlockID, db.Verified); err != nil {
 		logging.Logger.Errorf("failed to update block status to verified, block_id=%d err=%s", verifyBlockID, err.Error())
 		return err
@@ -157,7 +175,83 @@ func (s *BlobSyncer) verify() error {
 	return nil
 }
 
-func (s *BlobSyncer) verifyBlob(blockID uint64, sidecars []*types.GeneralSideCar, blobMetas []*db.Blob, bundleName string) error {
+// verifyBundleIntegrity is used to verify the integrity of a bundle by comparing the checksums of the re-constructed bundle object and the on-chain object.
+// If the checksums are not equal, the bundle will be re-uploaded.
+func (s *BlobSyncer) verifyBundleIntegrity(bundleName string, bundleStartBlockID, bundleEndBlockID uint64) error {
+	// recreate the bundle for the block range
+	verifyBundleName := bundleName + "_verify"
+	_, err := os.Stat(s.getBundleDir(verifyBundleName))
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(filepath.Dir(s.getBundleDir(verifyBundleName)), os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
+	defer os.RemoveAll(s.getBundleDir(verifyBundleName))
+
+	for bi := bundleStartBlockID; bi <= bundleEndBlockID; bi++ {
+		logging.Logger.Infof("start to get blob from block_id=%d", bi)
+		ctx, cancel := context.WithTimeout(context.Background(), RPCTimeout)
+		defer cancel()
+		sideCars, err := s.client.GetBlob(ctx, bi)
+		if err != nil {
+			logging.Logger.Errorf("failed to get blob at block_id=%d, err=%s", bi, err.Error())
+			return err
+		}
+		if err = s.writeBlobToFile(bi, verifyBundleName, sideCars); err != nil {
+			return err
+		}
+	}
+	bundleObject, _, err := cmn.BundleObjectFromDirectory(s.getBundleDir(verifyBundleName))
+	if err != nil {
+		return err
+	}
+	logging.Logger.Infof("successfully bundle object from dir, name=%s", verifyBundleName)
+
+	storageParams, err := s.GetParams()
+	if err != nil {
+		return err
+	}
+	maxSegSize, err := util.StringToInt64(storageParams.MaxSegmentSize)
+	if err != nil {
+		return err
+	}
+	// compute the integrity hash
+	expectCheckSums, _, err := util.ComputeIntegrityHashSerial(bundleObject, maxSegSize, storageParams.RedundantDataChunkNum, storageParams.RedundantParityChunkNum)
+	if err != nil {
+		return err
+	}
+	// get object from chain
+	onChainBundleObject, err := s.chainClient.GetObjectMeta(context.Background(), s.getBucketName(), bundleName)
+	if err != nil {
+		logging.Logger.Errorf("failed to get object from chain, bucketName = %s, bundleName=%s, err=%s", s.getBucketName(), bundleName, err.Error())
+		return err
+	}
+	if len(expectCheckSums) != len(onChainBundleObject.Checksums) {
+		logging.Logger.Errorf("found checksum number mismatch")
+		return ErrVerificationFailed
+	}
+	// compare the checksum
+	for i, expectCheckSum := range expectCheckSums {
+		encodedChecksum := base64.StdEncoding.EncodeToString(expectCheckSum)
+		if !strings.EqualFold(encodedChecksum, onChainBundleObject.Checksums[i]) {
+			logging.Logger.Errorf("found checksum mismatch")
+			return ErrVerificationFailed
+		}
+	}
+	// update the status
+	if err = s.blobDao.UpdateBlocksStatus(bundleStartBlockID, bundleEndBlockID, db.Verified); err != nil {
+		return err
+	}
+	metrics.VerifiedBlockIDGauge.Set(float64(bundleEndBlockID))
+	if err = s.blobDao.UpdateBundleStatus(bundleName, db.Sealed); err != nil {
+		return err
+	}
+	logging.Logger.Infof("successfully verify bundle=%s, start_block_id=%d, end_block_id =%d ", bundleName, bundleStartBlockID, bundleEndBlockID)
+	return nil
+}
+
+func (s *BlobSyncer) verifyBlobsAtBlock(blockID uint64, sidecars []*types.GeneralSideCar, blobMetas []*db.Blob, bundleName string) error {
 	for i := 0; i < len(sidecars); i++ {
 		// get blob from bundle service
 		blobFromBundle, err := s.bundleClient.GetObject(s.getBucketName(), bundleName, types.GetBlobName(blockID, i))
@@ -178,7 +272,7 @@ func (s *BlobSyncer) verifyBlob(blockID uint64, sidecars []*types.GeneralSideCar
 			logging.Logger.Errorf("found index mismatch")
 			return ErrVerificationFailed
 		}
-
+		// verify the kzg proof
 		expectedKzgProofHash, err := util.GenerateHash(sidecars[i].KzgProof)
 		if err != nil {
 			return err
@@ -187,11 +281,13 @@ func (s *BlobSyncer) verifyBlob(blockID uint64, sidecars []*types.GeneralSideCar
 		if err != nil {
 			return err
 		}
+		// compare the kzg proof
 		if !bytes.Equal(actualKzgProofHash, expectedKzgProofHash) {
 			logging.Logger.Errorf("found kzg proof mismatch")
 			return ErrVerificationFailed
 		}
 
+		// verify the blob, compare the hash
 		actualBlobHash, err := util.GenerateHash(blobFromBundle)
 		if err != nil {
 			return err
@@ -200,6 +296,7 @@ func (s *BlobSyncer) verifyBlob(blockID uint64, sidecars []*types.GeneralSideCar
 		if err != nil {
 			return err
 		}
+		// compare the blob hash
 		if !bytes.Equal(actualBlobHash, expectedBlobHash) {
 			logging.Logger.Errorf("found blob mismatch")
 			return ErrVerificationFailed
@@ -208,6 +305,7 @@ func (s *BlobSyncer) verifyBlob(blockID uint64, sidecars []*types.GeneralSideCar
 	return nil
 }
 
+// reUploadBundle is used to re-upload a bundle if the verification failed.
 func (s *BlobSyncer) reUploadBundle(bundleName string) error {
 	if err := s.blobDao.UpdateBundleStatus(bundleName, db.Deprecated); err != nil {
 		return err
@@ -235,6 +333,7 @@ func (s *BlobSyncer) reUploadBundle(bundleName string) error {
 	}); err != nil {
 		return err
 	}
+	// get the blobs from beacon chain or BSC
 	for bi := startBlockID; bi <= endBlockID; bi++ {
 		ctx, cancel := context.WithTimeout(context.Background(), RPCTimeout)
 		defer cancel()
@@ -251,7 +350,7 @@ func (s *BlobSyncer) reUploadBundle(bundleName string) error {
 		if s.ETHChain() {
 			block, err = s.client.GetBeaconBlock(ctx, bi)
 			if err != nil {
-				if err == eth.ErrBlockNotFound {
+				if errors.Is(err, eth.ErrBlockNotFound) {
 					continue
 				}
 				return err
@@ -288,4 +387,10 @@ func (s *BlobSyncer) reUploadBundle(bundleName string) error {
 		return err
 	}
 	return nil
+}
+
+// DetailedIntegrityCheckEnabled returns whether the detailed integrity check on individual blob is enabled, otherwise the
+// integrity check will be done on the bundle level.
+func (s *BlobSyncer) DetailedIntegrityCheckEnabled() bool {
+	return s.config.EnableIndivBlobVerification
 }
