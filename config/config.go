@@ -29,9 +29,11 @@ type SyncerConfig struct {
 	BundleServiceEndpoints           []string      `json:"bundle_service_endpoints"`             // BundleServiceEndpoints is a list of bundle service address
 	BeaconRPCAddrs                   []string      `json:"beacon_rpc_addrs"`                     // BeaconRPCAddrs is a list of beacon chain RPC address
 	RPCAddrs                         []string      `json:"rpc_addrs"`                            // RPCAddrs ETH or BSC RPC addr
+	GnfdRpcAddr                      string        `json:"gnfd_rpc_addr"`                        // GnfdRpcAddr is the Greenfield RPC address
 	TempDir                          string        `json:"temp_dir"`                             // TempDir is used to store blobs and created bundle
 	PrivateKey                       string        `json:"private_key"`                          // PrivateKey is the key of bucket owner, request to bundle service will be signed by it as well.
 	BundleNotSealedReuploadThreshold int64         `json:"bundle_not_sealed_reupload_threshold"` // BundleNotSealedReuploadThreshold for re-uploading a bundle if it cant be sealed within the time threshold.
+	EnableIndivBlobVerification      bool          `json:"enable_indiv_blob_verification"`       // EnableIndivBlobVerification is used to enable individual blob verification, otherwise only bundle level verification is performed.
 	DBConfig                         DBConfig      `json:"db_config"`
 	MetricsConfig                    MetricsConfig `json:"metrics_config"`
 	LogConfig                        LogConfig     `json:"log_config"`

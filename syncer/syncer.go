@@ -54,9 +54,11 @@ type BlobSyncer struct {
 	blobDao      db.BlobDao
 	client       external.IClient
 	bundleClient *cmn.BundleClient
+	chainClient  *cmn.ChainClient
 	config       *config.SyncerConfig
 	bundleDetail *curBundleDetail
 	spClient     *cmn.SPClient
+	params       *cmn.VersionedParams
 }
 
 func NewBlobSyncer(
@@ -71,9 +73,15 @@ func NewBlobSyncer(
 	if err != nil {
 		panic(err)
 	}
+	chainClient, err := cmn.NewChainClient(cfg.GnfdRpcAddr)
+	if err != nil {
+		panic(err)
+	}
+
 	bs := &BlobSyncer{
 		blobDao:      blobDao,
 		bundleClient: bundleClient,
+		chainClient:  chainClient,
 		config:       cfg,
 	}
 	bs.client = external.NewClient(cfg)
@@ -524,4 +532,17 @@ func (s *BlobSyncer) BSCChain() bool {
 
 func (s *BlobSyncer) ETHChain() bool {
 	return s.config.Chain == config.ETH
+}
+
+func (s *BlobSyncer) GetParams() (*cmn.VersionedParams, error) {
+	if s.params == nil {
+		params, err := s.chainClient.GetParams(context.Background())
+		if err != nil {
+			logging.Logger.Errorf("failed to get params, err=%s", err.Error())
+			return nil, err
+		}
+		s.params = params
+	}
+	return s.params, nil
+
 }

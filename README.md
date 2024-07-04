@@ -276,6 +276,7 @@ config example:
   "temp_dir": "temp",
   "private_key": "0x....",
   "bundle_not_sealed_reupload_threshold": 3600,
+  "enable_indiv_blob_verification": false,
   "db_config": {
     "dialect": "mysql",
     "username": "root",
@@ -320,6 +321,7 @@ config example:
   "temp_dir": "temp",
   "private_key": "0x....",
   "bundle_not_sealed_reupload_threshold": 3600,
+  "enable_indiv_blob_verification": false,
   "db_config": {
     "dialect": "mysql",
     "username": "root",

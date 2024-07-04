@@ -162,7 +162,7 @@ func (c *BundleClient) DeleteBundle(bundleName, bucketName string) error {
 
 func (c *BundleClient) UploadAndFinalizeBundle(bundleName, bucketName, bundleDir, bundlePath string) error {
 
-	bundleObject, _, err := bundleDirectory(bundleDir)
+	bundleObject, _, err := BundleObjectFromDirectory(bundleDir)
 	if err != nil {
 		return err
 	}
@@ -364,7 +364,7 @@ func (c *BundleClient) signMessage(message []byte) ([]byte, error) {
 	return signature, err
 }
 
-func bundleDirectory(dir string) (io.ReadSeekCloser, int64, error) {
+func BundleObjectFromDirectory(dir string) (io.ReadSeekCloser, int64, error) {
 	b, err := bundlesdk.NewBundle()
 	if err != nil {
 		return nil, 0, err
@@ -376,6 +376,7 @@ func bundleDirectory(dir string) (io.ReadSeekCloser, int64, error) {
 	}
 	return b.FinalizeBundle()
 }
+
 func visit(root string, b *bundlesdk.Bundle) filepath.WalkFunc {
 	return func(path string, f os.FileInfo, err error) error {
 		if err != nil {
