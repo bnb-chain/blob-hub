@@ -476,7 +476,7 @@ func (s *BlobSyncer) toBlockAndBlobs(blockResp *structs.GetBlockV2Response, side
 
 			rootBz, err := hexutil.Decode(header.Data.Root)
 			if err != nil {
-				logging.Logger.Errorf("failed to decode header.Data.GetObjectInfoResponse=%s, err=%s", header.Data.Root, err.Error())
+				logging.Logger.Errorf("failed to decode header.Data.Root=%s, err=%s", header.Data.Root, err.Error())
 				return nil, nil, err
 			}
 			sigBz, err := hexutil.Decode(header.Data.Header.Signature)

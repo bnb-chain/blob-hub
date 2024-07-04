@@ -176,7 +176,7 @@ func (s *BlobSyncer) verify() error {
 }
 
 // verifyBundleIntegrity is used to verify the integrity of a bundle by comparing the checksums of the re-constructed bundle object and the on-chain object.
-// If the checksums are not equal, the bundle will be re-uploaded.
+// If the checksums are not equal, the bundle will be re-uploaded, and the re-uploaded bundle will be verified as well, until the verification is successful.
 func (s *BlobSyncer) verifyBundleIntegrity(bundleName string, bundleStartBlockID, bundleEndBlockID uint64) error {
 	// recreate the bundle for the block range
 	verifyBundleName := bundleName + "_verify"
