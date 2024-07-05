@@ -8,7 +8,7 @@ type Blob struct {
 	VersionedHash            string `gorm:"NOT NULL"`
 	Slot                     uint64 `gorm:"NOT NULL;index:idx_blob_slot_index"`
 	Idx                      int    `gorm:"NOT NULL;index:idx_blob_slot_idx"`
-	TxIndex                  int
+	TxIndex                  int    `gorm:"comment:txIndex"`
 	KzgCommitment            string `gorm:"NOT NULL"`
 	KzgProof                 string `gorm:"NOT NULL"`
 	CommitmentInclusionProof string `gorm:"NOT NULL"`
