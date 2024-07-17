@@ -3,6 +3,7 @@ package cmn
 import (
 	"context"
 	"encoding/xml"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -60,4 +61,20 @@ func (c *SPClient) GetBucketReadQuota(ctx context.Context, bucketName string) (Q
 		return QuotaInfo{}, err
 	}
 	return QuotaResult, nil
+}
+
+func (c *SPClient) GetBundleObject(ctx context.Context, bucketName, objectName string) (io.ReadCloser, error) {
+	var urlStr string
+	parts := strings.Split(c.host, "//")
+	urlStr = parts[0] + "//" + bucketName + "." + parts[1] + "/" + objectName
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Body, nil
 }

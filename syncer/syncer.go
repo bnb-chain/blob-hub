@@ -154,7 +154,7 @@ func (s *BlobSyncer) sync() error {
 		var latestBlockResp *structs.GetBlockV2Response
 		block, err = s.client.GetBeaconBlock(ctx, blockID)
 		if err != nil {
-			if err != eth.ErrBlockNotFound {
+			if !errors.Is(err, eth.ErrBlockNotFound) {
 				return err
 			}
 			// Both try to get forked block and non-exist block will return 404. When the response is ErrBlockNotFound,
@@ -217,7 +217,7 @@ func (s *BlobSyncer) sync() error {
 		dbErr = err
 	}
 	if dbErr != nil {
-		logging.Logger.Errorf("failed to save block(h=%d) to DB, err=%s", blockID, err.Error())
+		logging.Logger.Errorf("failed to save block(h=%d) to DB, err=%s", blockID, dbErr.Error())
 		return dbErr
 	}
 	if blockID == s.bundleDetail.finalizeBlockID {
