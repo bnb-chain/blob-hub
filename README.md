@@ -3,7 +3,7 @@
 ## Overview
 
 The blob-hub service acts as an intermediary between Greenfield and Ethereum/BSC, continuously retrieving blobs from Ethereum/BSC and persisting in Greenfield..
-These blobs, collected from a specific Beacon slot range on Ethereum or specific block height range on BSC, are consolidated into a bundle and transmitted to the [Bundle Service](https://docs.bnbchain.org/greenfield-docs/docs/api/bundle-service/)
+These blobs, collected from a specific Beacon slot range on Ethereum or specific block height range on BSC, are consolidated into a bundle and transmitted to the [Bundle Service](https://docs.bnbchain.org/greenfield-docs/docs/api/bundle-service/) 
 for further processing. Subsequently, the bundle is stored in Greenfield for long-term archival purposes. Additionally,
 the blob-hub service offers APIs that enable users to access and retrieve historical blobs as needed.
 
