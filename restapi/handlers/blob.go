@@ -45,7 +45,7 @@ func HandleGetBlobSidecars() func(params blob.GetBlobSidecarsByBlockNumParams) m
 				}
 				sidecars, err = service.BlobSvc.GetBlobSidecarsByRoot(hex.EncodeToString(root), indicesInx)
 				if err != nil {
-					return blob.NewGetBlobSidecarsByBlockNumInternalServerError().WithPayload(service.InternalErrorWithError(err))
+					return blob.NewGetBlobSidecarsByBlockNumInternalServerError().WithPayload(service.InternalError())
 				}
 			} else {
 				slot, err := util.StringToUint64(blockID)
@@ -54,7 +54,7 @@ func HandleGetBlobSidecars() func(params blob.GetBlobSidecarsByBlockNumParams) m
 				}
 				sidecars, err = service.BlobSvc.GetBlobSidecarsByBlockNumOrSlot(slot, indicesInx)
 				if err != nil {
-					return blob.NewGetBlobSidecarsByBlockNumInternalServerError().WithPayload(service.InternalErrorWithError(err))
+					return blob.NewGetBlobSidecarsByBlockNumInternalServerError().WithPayload(service.InternalError())
 				}
 			}
 			payload := models.GetBlobSideCarsResponse{
@@ -99,7 +99,7 @@ func HandleGetBSCBlobSidecars() func(params blob.GetBSCBlobSidecarsByBlockNumPar
 			}
 			sidecars, err := service.BlobSvc.GetBlobSidecarsByBlockNumOrSlot(blockNum, nil)
 			if err != nil {
-				return blob.NewGetBlobSidecarsByBlockNumInternalServerError().WithPayload(service.InternalErrorWithError(err))
+				return blob.NewGetBlobSidecarsByBlockNumInternalServerError().WithPayload(service.InternalError())
 			}
 			// group sidecars by tx hash
 			bscTxSidecars := make(map[string]*models.BSCBlobTxSidecar)

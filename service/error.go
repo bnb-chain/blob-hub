@@ -26,10 +26,10 @@ func (e Err) Error() string {
 	return fmt.Sprintf("%d: %s", e.Code, e.Message)
 }
 
-func InternalErrorWithError(err error) *models.Error {
+func InternalError() *models.Error {
 	return &models.Error{
 		Code:    500,
-		Message: err.Error(),
+		Message: "internal error",
 	}
 }
 
