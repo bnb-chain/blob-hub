@@ -19,7 +19,8 @@ type QuotaInfo struct {
 }
 
 type ObjectInfo struct {
-	Checksums []string `json:"checksums"`
+	Checksums    []string `json:"checksums"`
+	ObjectStatus string   `json:"object_status"`
 }
 
 type GetObjectInfoResponse struct {
