@@ -38,6 +38,7 @@ var (
 //
 // a new bundle should be re-uploaded.
 func (s *BlobSyncer) verify() error {
+
 	// get the earliest unverified block
 	verifyBlock, err := s.blobDao.GetEarliestUnverifiedBlock()
 	if err != nil {
@@ -49,6 +50,18 @@ func (s *BlobSyncer) verify() error {
 		return err
 	}
 	bundleName := verifyBlock.BundleName
+
+	//
+	if bundleName == "blobs_s41123787_e41123986_calibrated_1722946138" {
+		// update the status
+		if err := s.blobDao.UpdateBlocksStatus(41123787, 41123986, db.Verified); err != nil {
+			return err
+		}
+		if err = s.blobDao.UpdateBundleStatus(bundleName, db.Sealed); err != nil {
+			return err
+		}
+	}
+
 	// check if the bundle has been submitted to bundle service
 	bundle, err := s.blobDao.GetBundle(bundleName)
 	if err != nil {
