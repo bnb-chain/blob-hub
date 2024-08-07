@@ -38,6 +38,7 @@ var (
 //
 // a new bundle should be re-uploaded.
 func (s *BlobSyncer) verify() error {
+
 	// get the earliest unverified block
 	verifyBlock, err := s.blobDao.GetEarliestUnverifiedBlock()
 	if err != nil {
@@ -64,7 +65,6 @@ func (s *BlobSyncer) verify() error {
 	if err != nil {
 		return err
 	}
-
 	verifyBlockID := verifyBlock.Slot
 	// validate the bundle info at the start slot of a bundle
 	if verifyBlockID == bundleStartBlockID || !s.DetailedIntegrityCheckEnabled() {
@@ -92,13 +92,25 @@ func (s *BlobSyncer) verify() error {
 			}
 			return nil
 		}
+
 		// the bundle is not sealed yet
 		if bundleInfo.Status == BundleStatusFinalized || bundleInfo.Status == BundleStatusCreatedOnChain {
-			if bundle.CreatedTime > 0 && time.Now().Unix()-bundle.CreatedTime > s.config.GetReUploadBundleThresh() {
-				logging.Logger.Infof("the bundle %s is not sealed and exceed the re-upload threshold %d ", bundleName, s.config.GetReUploadBundleThresh())
-				return s.reUploadBundle(bundleName)
+			// get the object meta from chain
+			objectMeta, err := s.chainClient.GetObjectMeta(context.Background(), s.getBucketName(), bundleName)
+			if err != nil {
+				logging.Logger.Errorf("failed to get object meta from chain, bundleName=%s", bundleName)
+				return err
 			}
-			return nil
+			// check the object info from chain to make sure it is not be sealed
+			// if it is not be sealed, re-upload it
+			if objectMeta.ObjectStatus != "OBJECT_STATUS_SEALED" {
+				if bundle.CreatedTime > 0 && time.Now().Unix()-bundle.CreatedTime > s.config.GetReUploadBundleThresh() {
+					logging.Logger.Infof("the bundle %s is not sealed and exceed the re-upload threshold %d ", bundleName, s.config.GetReUploadBundleThresh())
+					return s.reUploadBundle(bundleName)
+				}
+				logging.Logger.Info("the bundle is not sealed yet, bundleName=%s, status = %d", bundleName, bundleInfo.Status)
+				return nil
+			}
 		}
 	}
 
@@ -256,7 +268,7 @@ func (s *BlobSyncer) verifyBlobsAtBlock(blockID uint64, sidecars []*types.Genera
 		// get blob from bundle service
 		blobFromBundle, err := s.bundleClient.GetObject(s.getBucketName(), bundleName, types.GetBlobName(blockID, i))
 		if err != nil {
-			if err == cmn.ErrorBundleObjectNotExist {
+			if errors.Is(err, cmn.ErrorBundleObjectNotExist) {
 				logging.Logger.Errorf("the bundle object not found in bundle service, object=%s", types.GetBlobName(blockID, i))
 				return ErrVerificationFailed
 			}
@@ -310,8 +322,9 @@ func (s *BlobSyncer) reUploadBundle(bundleName string) error {
 	if err := s.blobDao.UpdateBundleStatus(bundleName, db.Deprecated); err != nil {
 		return err
 	}
+	parts := strings.Split(bundleName, "_")
+	newBundleName := parts[0] + "_" + parts[1] + "_" + parts[2] + "_calibrated_" + util.Int64ToString(time.Now().Unix())
 
-	newBundleName := bundleName + "_calibrated_" + util.Int64ToString(time.Now().Unix())
 	startBlockID, endBlockID, err := types.ParseBundleName(bundleName)
 	if err != nil {
 		return err

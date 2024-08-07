@@ -110,8 +110,7 @@ func (s *BlobSyncer) StartLoop() {
 		syncTicker := time.NewTicker(LoopSleepTime)
 		for range syncTicker.C {
 			if err = s.sync(); err != nil {
-				logging.Logger.Error(err)
-				continue
+				logging.Logger.Errorf("failed to sync, err=%s", err.Error())
 			}
 		}
 	}()
@@ -119,8 +118,7 @@ func (s *BlobSyncer) StartLoop() {
 		verifyTicket := time.NewTicker(LoopSleepTime)
 		for range verifyTicket.C {
 			if err := s.verify(); err != nil {
-				logging.Logger.Error(err)
-				continue
+				logging.Logger.Errorf("failed to verify, err=%s", err.Error())
 			}
 		}
 	}()
