@@ -54,7 +54,7 @@ function all() {
 
 function updateQuota() {
   prepare
-  ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt bucket update --chargedQuota 161061273600 gnfd://${BUCKET_NAME}
+  ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt bucket update --chargedQuota 21474836480 gnfd://${BUCKET_NAME}
 }
 
 
