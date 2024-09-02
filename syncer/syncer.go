@@ -255,8 +255,16 @@ func (s *BlobSyncer) process(bundleName string, blockID uint64, sidecars []*type
 	}
 	if blockID == s.bundleDetail.finalizeBlockID {
 		// this is idempotent
-		err = s.finalizeCurBundle(bundleName)
-		if err != nil {
+		_, err = s.bundleClient.GetBundleInfo(s.getBucketName(), bundleName)
+		if err == nil {
+			logging.Logger.Infof("bundle %s already exists in bundle service", bundleName)
+			return s.blobDao.UpdateBundleStatus(bundleName, db.Finalized)
+		}
+		if !errors.Is(err, cmn.ErrorBundleNotExist) {
+			logging.Logger.Errorf("failed to get bundle info, bundle=%s, err=%s", bundleName, err.Error())
+			return err
+		}
+		if err = s.finalizeCurBundle(bundleName); err != nil {
 			logging.Logger.Errorf("failed to finalize bundle, bundle=%s, err=%s", bundleName, err.Error())
 			return err
 		}
