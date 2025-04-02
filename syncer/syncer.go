@@ -39,7 +39,7 @@ const (
 
 	LoopSleepTime      = 10 * time.Millisecond
 	LoopErrorPauseTime = 2 * time.Second
-	BSCPauseTime       = 3 * time.Second
+	BSCPauseTime       = 750 * time.Millisecond
 
 	ETHPauseTime         = 90 * time.Second
 	RPCTimeout           = 20 * time.Second
