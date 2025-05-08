@@ -1,0 +1,49 @@
+name: Docker CI
+
+on:
+  pull_request:
+    branches:
+      - master
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+  IMAGE_SOURCE: https://github.com/${{ github.repository }}
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build image
+        run: |
+          docker build . \
+          --label "org.opencontainers.image.source=${IMAGE_SOURCE}" \
+          --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" \
+          --label "org.opencontainers.image.version=$(git describe --tags --abbrev=0)" \
+          -f ./server-distroless.dockerfile -t "${IMAGE_NAME}:server-distroless"
+
+          docker build . \
+          --label "org.opencontainers.image.source=${IMAGE_SOURCE}" \
+          --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" \
+          --label "org.opencontainers.image.version=$(git describe --tags --abbrev=0)" \
+          -f ./syncer-distroless.dockerfile -t "${IMAGE_NAME}:syncer-distroless"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GH_TOKEN }}
+
+      - name: Push image
+        run: |
+          VERSION=pr-$(echo "${{ github.event.number }}")
+          echo IMAGE_NAME=$IMAGE_NAME
+          echo VERSION=$VERSION
+          docker tag ${IMAGE_NAME}:server-distroless $IMAGE_NAME:$VERSION-server-distroless
+          docker tag ${IMAGE_NAME}:syncer-distroless $IMAGE_NAME:$VERSION-syncer-distroless
+          docker push $IMAGE_NAME:$VERSION-server-distroless
+          docker push $IMAGE_NAME:$VERSION-syncer-distroless
