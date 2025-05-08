@@ -165,9 +165,9 @@ func (s *BlobSyncer) sync() error {
 				logging.Logger.Errorf("failed to get latest becon block, err=%s", err.Error())
 				return err
 			}
-			clBlock, _, err := ToBlockAndExecutionPayloadDeneb(latestBlockResp)
+			clBlock, _, err := ToBlockAndExecutionPayloadElectra(latestBlockResp)
 			if err != nil {
-				logging.Logger.Errorf("failed to ToBlockAndExecutionPayloadDeneb, err=%s", err.Error())
+				logging.Logger.Errorf("failed to ToBlockAndExecutionPayloadElectra, err=%s", err.Error())
 				return err
 			}
 			if blockID >= uint64(clBlock.Slot) {
@@ -470,15 +470,15 @@ func (s *BlobSyncer) toBlockAndBlobs(blockResp *structs.GetBlockV2Response, side
 	case s.ETHChain():
 		// Process ETH beacon and execution layer block
 		var (
-			clBlock          *ethpb.BeaconBlockDeneb
-			executionPayload *v1.ExecutionPayloadDeneb
+			clBlock          *ethpb.BeaconBlockElectra
+			executionPayload *v1.ExecutionPayloadElectra
 			err              error
 		)
 		switch blockResp.Version {
-		case version.String(version.Deneb):
-			clBlock, executionPayload, err = ToBlockAndExecutionPayloadDeneb(blockResp)
+		case version.String(version.Electra):
+			clBlock, executionPayload, err = ToBlockAndExecutionPayloadElectra(blockResp)
 			if err != nil {
-				logging.Logger.Errorf("failed to convert to ToBlockAndExecutionPayloadDeneb, err=%s", err.Error())
+				logging.Logger.Errorf("failed to convert to ToBlockAndExecutionPayloadElectra, err=%s", err.Error())
 				return nil, nil, err
 			}
 
