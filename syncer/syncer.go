@@ -471,7 +471,7 @@ func (s *BlobSyncer) toBlockAndBlobs(blockResp *structs.GetBlockV2Response, side
 		// Process ETH beacon and execution layer block
 		var (
 			clBlock          *ethpb.BeaconBlockElectra
-			executionPayload *v1.ExecutionPayloadElectra
+			executionPayload *v1.ExecutionPayloadDeneb
 			err              error
 		)
 		switch blockResp.Version {
