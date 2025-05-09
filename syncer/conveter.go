@@ -9,7 +9,7 @@ import (
 )
 
 // ToBlockAndExecutionPayloadElectra extract beacon-signed block and execution payload from GetBlockV2Response
-func ToBlockAndExecutionPayloadElectra(blockResp *structs.GetBlockV2Response) (*ethpb.BeaconBlockElectra, *v1.ExecutionPayloadElectra, error) {
+func ToBlockAndExecutionPayloadElectra(blockResp *structs.GetBlockV2Response) (*ethpb.BeaconBlockElectra, *v1.ExecutionPayloadDeneb, error) {
 	sbb := &structs.SignedBeaconBlockElectra{Message: &structs.BeaconBlockElectra{}}
 	err := json.Unmarshal(blockResp.Data.Message, sbb.Message)
 	if err != nil {
