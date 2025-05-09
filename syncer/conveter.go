@@ -8,17 +8,17 @@ import (
 	ethpb "github.com/prysmaticlabs/prysm/v5/proto/prysm/v1alpha1"
 )
 
-// ToBlockAndExecutionPayloadDeneb extract beacon-signed block and execution payload from GetBlockV2Response
-func ToBlockAndExecutionPayloadDeneb(blockResp *structs.GetBlockV2Response) (*ethpb.BeaconBlockDeneb, *v1.ExecutionPayloadDeneb, error) {
-	sbb := &structs.SignedBeaconBlockDeneb{Message: &structs.BeaconBlockDeneb{}}
+// ToBlockAndExecutionPayloadElectra extract beacon-signed block and execution payload from GetBlockV2Response
+func ToBlockAndExecutionPayloadElectra(blockResp *structs.GetBlockV2Response) (*ethpb.BeaconBlockElectra, *v1.ExecutionPayloadDeneb, error) {
+	sbb := &structs.SignedBeaconBlockElectra{Message: &structs.BeaconBlockElectra{}}
 	err := json.Unmarshal(blockResp.Data.Message, sbb.Message)
 	if err != nil {
 		return nil, nil, err
 	}
 	sbb.Signature = blockResp.Data.Signature
-	signedBeaconBlockDeneb, err := sbb.ToConsensus()
+	signedBeaconBlockElectra, err := sbb.ToConsensus()
 	if err != nil {
 		return nil, nil, err
 	}
-	return signedBeaconBlockDeneb.GetBlock(), signedBeaconBlockDeneb.GetBlock().GetBody().GetExecutionPayload(), nil
+	return signedBeaconBlockElectra.GetBlock(), signedBeaconBlockElectra.GetBlock().GetBody().GetExecutionPayload(), nil
 }
