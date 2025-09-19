@@ -9,7 +9,7 @@ function prepare() {
     cd ${WORKSPACE}
     git clone https://github.com/bnb-chain/greenfield-cmd.git
     cd greenfield-cmd
-    git checkout allowance
+    git checkout feat-support-revoke-allowance
     make build
     cd build
 
@@ -36,6 +36,9 @@ function create_bucket() {
 function grant() {
     prepare
     ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt policy put --grantee ${GRANTEE_BUNDLE_ACCOUNT} --actions createObj  grn:b::"$BUCKET_NAME"
+    sleep 5
+    # revoke fee grant first in case it was granted before
+    ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt fee revoke --grantee ${GRANTEE_BUNDLE_ACCOUNT}
     sleep 5
     ./gnfd-cmd -c ./config.toml --home ./ --passwordfile password.txt fee grant --grantee ${GRANTEE_BUNDLE_ACCOUNT} --allowance ${ALLOWANCE}
     echo "granted permission"
