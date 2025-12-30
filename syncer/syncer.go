@@ -475,7 +475,7 @@ func (s *BlobSyncer) toBlockAndBlobs(blockResp *structs.GetBlockV2Response, side
 			err              error
 		)
 		switch blockResp.Version {
-		case version.String(version.Deneb), types.FuluString:
+		case version.String(version.Deneb), version.String(version.Fulu):
 			// Fulu is compatible with Deneb for blob structure, use the same processing logic
 			clBlock, executionPayload, err = ToBlockAndExecutionPayloadDeneb(blockResp)
 			if err != nil {
