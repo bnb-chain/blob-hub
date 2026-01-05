@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - master
+      - feat-update-support-fulu
 
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository }}
