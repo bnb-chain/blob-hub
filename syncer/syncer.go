@@ -475,7 +475,8 @@ func (s *BlobSyncer) toBlockAndBlobs(blockResp *structs.GetBlockV2Response, side
 			err              error
 		)
 		switch blockResp.Version {
-		case version.String(version.Electra):
+		case version.String(version.Electra), version.String(version.Fulu):
+			// Fulu is compatible with Electra for blob structure, use the same processing logic
 			clBlock, executionPayload, err = ToBlockAndExecutionPayloadElectra(blockResp)
 			if err != nil {
 				logging.Logger.Errorf("failed to convert to ToBlockAndExecutionPayloadElectra, err=%s", err.Error())
