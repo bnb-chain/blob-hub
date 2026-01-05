@@ -135,10 +135,10 @@ func grpcServer() {
 	maxMsgSize := 1024 * 1024 * 20
 	// Create a client connection to the gRPC server we just started
 	// This is where the gRPC-Gateway proxies the requests
-	conn, err := grpc.DialContext(
+	conn, err := grpc.DialContext( // nolint
 		context.Background(),
 		"0.0.0.0:8080",
-		grpc.WithBlock(),
+		grpc.WithBlock(),    // nolint
 		grpc.WithInsecure(), // nolint
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxMsgSize), grpc.MaxCallSendMsgSize(maxMsgSize)),
 	)
